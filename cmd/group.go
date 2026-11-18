@@ -7,9 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.mau.fi/whatsmeow/types"
-	waLog "go.mau.fi/whatsmeow/util/log"
 
-	"github.com/codebyoketch/wa-cli/internal/store"
 	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
@@ -25,7 +23,7 @@ var groupListCmd = &cobra.Command{
 		var groups []whatsapp.Group
 		err := captureLibraryStdout(func() error {
 			ctx := context.Background()
-			client, err := connectClient(ctx)
+			client, err := connectedClient(ctx, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -64,7 +62,7 @@ var groupInfoCmd = &cobra.Command{
 		var participants []whatsapp.Participant
 		err := captureLibraryStdout(func() error {
 			ctx := context.Background()
-			client, err := connectClient(ctx)
+			client, err := connectedClient(ctx, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -129,7 +127,7 @@ besides yourself.`,
 			return fmt.Errorf("cancelled")
 		}
 
-		client, err := connectClient(ctx)
+		client, err := connectedClient(ctx, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -165,25 +163,6 @@ var groupRemoveCmd = &cobra.Command{
 func init() {
 	groupCmd.AddCommand(groupListCmd, groupInfoCmd, groupCreateCmd, groupAddCmd, groupRemoveCmd)
 	rootCmd.AddCommand(groupCmd)
-}
-
-func connectClient(ctx context.Context) (*whatsapp.Client, error) {
-	dbLog := waLog.Stdout("Database", "WARN", true)
-	container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-	if err != nil {
-		return nil, err
-	}
-	client, err := whatsapp.New(ctx, container, dbLog, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	if !client.IsLoggedIn() {
-		return nil, fmt.Errorf("not logged in: run 'wa login' first")
-	}
-	if err := client.Connect(ctx); err != nil {
-		return nil, err
-	}
-	return client, nil
 }
 
 // resolveGroupJID accepts a literal JID or a group name (exact match
@@ -235,7 +214,7 @@ func confirm(prompt string) bool {
 
 func groupParticipantChange(groupTarget string, participantTargets []string, add bool) error {
 	ctx := context.Background()
-	client, err := connectClient(ctx)
+	client, err := connectedClient(ctx, nil, nil)
 	if err != nil {
 		return err
 	}

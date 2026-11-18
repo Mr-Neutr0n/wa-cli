@@ -11,7 +11,6 @@ import (
 
 	"github.com/codebyoketch/wa-cli/internal/chatstore"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
-	"github.com/codebyoketch/wa-cli/internal/store"
 	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
@@ -133,11 +132,7 @@ var chatOpenCmd = &cobra.Command{
 		// Local store only (no connection): resolves sender names and
 		// mentions, and renders/hides non-text message types.
 		ctx := context.Background()
-		container, err := store.Open(ctx, a.Config.DataDir, waLog.Stdout("Database", "WARN", true))
-		if err != nil {
-			return err
-		}
-		client, err := whatsapp.New(ctx, container, waLog.Noop, nil, nil)
+		client, err := openClient(ctx, waLog.Noop, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -227,15 +222,8 @@ func syncAndLoadChats(cmd *cobra.Command) ([]chatstore.Chat, error) {
 	var chats []chatstore.Chat
 	err := captureLibraryStdout(func() error {
 		ctx := context.Background()
-		dbLog := waLog.Stdout("Database", "WARN", true)
-
-		container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-		if err != nil {
-			return err
-		}
-
 		cs := chatstore.New(a.Config.DataDir)
-		client, err := whatsapp.New(ctx, container, dbLog, cs, msgstore.New(a.Config.DataDir))
+		client, err := openClient(ctx, libLog(), cs, msgstore.New(a.Config.DataDir))
 		if err != nil {
 			return err
 		}

@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	waLog "go.mau.fi/whatsmeow/util/log"
 
-	"github.com/codebyoketch/wa-cli/internal/store"
 	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
@@ -121,21 +119,10 @@ func loadContacts() ([]whatsapp.Contact, error) {
 	var contacts []whatsapp.Contact
 	err := captureLibraryStdout(func() error {
 		ctx := context.Background()
-		dbLog := waLog.Stdout("Database", "WARN", true)
-
-		container, err := store.Open(ctx, a.Config.DataDir, dbLog)
+		client, err := loggedInClient(ctx, nil, nil)
 		if err != nil {
 			return err
 		}
-
-		client, err := whatsapp.New(ctx, container, dbLog, nil, nil)
-		if err != nil {
-			return err
-		}
-		if !client.IsLoggedIn() {
-			return fmt.Errorf("not logged in: run 'wa login' first")
-		}
-
 		contacts, err = client.ListContacts(ctx)
 		return err
 	})

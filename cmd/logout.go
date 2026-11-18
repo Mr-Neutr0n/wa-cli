@@ -5,10 +5,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	waLog "go.mau.fi/whatsmeow/util/log"
-
-	"github.com/codebyoketch/wa-cli/internal/store"
-	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 var logoutCmd = &cobra.Command{
@@ -16,14 +12,7 @@ var logoutCmd = &cobra.Command{
 	Short: "Logout of WhatsApp",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		dbLog := waLog.Stdout("Database", "WARN", true)
-
-		container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-		if err != nil {
-			return err
-		}
-
-		client, err := whatsapp.New(ctx, container, dbLog, nil, nil)
+		client, err := openClient(ctx, libLog(), nil, nil)
 		if err != nil {
 			return err
 		}

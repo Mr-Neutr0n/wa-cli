@@ -73,7 +73,7 @@ func newMediaSendCmd(kind string) *cobra.Command {
 				return err
 			}
 
-			client, _, _, err := connectForSend(ctx)
+			client, _, err := connectForSend(ctx)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ omitted, a filename is derived from the message ID and the media's type.`,
 			return err
 		}
 
-		client, err := connectClient(ctx)
+		client, err := connectedClient(ctx, nil, nil)
 		if err != nil {
 			return err
 		}

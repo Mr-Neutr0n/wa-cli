@@ -5,10 +5,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	waLog "go.mau.fi/whatsmeow/util/log"
-
-	"github.com/codebyoketch/wa-cli/internal/store"
-	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 var statusCmd = &cobra.Command{
@@ -18,15 +14,7 @@ var statusCmd = &cobra.Command{
 		var loggedIn bool
 		var user string
 		err := captureLibraryStdout(func() error {
-			ctx := context.Background()
-			dbLog := waLog.Stdout("Database", "WARN", true)
-
-			container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-			if err != nil {
-				return err
-			}
-
-			client, err := whatsapp.New(ctx, container, dbLog, nil, nil)
+			client, err := openClient(context.Background(), libLog(), nil, nil)
 			if err != nil {
 				return err
 			}

@@ -2,19 +2,15 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/spf13/cobra"
-	waLog "go.mau.fi/whatsmeow/util/log"
 
 	"github.com/codebyoketch/wa-cli/internal/chatstore"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
 	"github.com/codebyoketch/wa-cli/internal/safety"
-	"github.com/codebyoketch/wa-cli/internal/store"
-	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 var watchCmd = &cobra.Command{
@@ -32,21 +28,10 @@ rather than racing a short sync window each time.`,
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
-		dbLog := waLog.Stdout("Database", "WARN", true)
-		container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-		if err != nil {
-			return err
-		}
-
-		cs := chatstore.New(a.Config.DataDir)
 		guard := safety.New(a.Config.DataDir)
-
-		client, err := whatsapp.New(ctx, container, dbLog, cs, msgstore.New(a.Config.DataDir))
+		client, err := loggedInClient(ctx, chatstore.New(a.Config.DataDir), msgstore.New(a.Config.DataDir))
 		if err != nil {
 			return err
-		}
-		if !client.IsLoggedIn() {
-			return fmt.Errorf("not logged in: run 'wa login' first")
 		}
 		client.SetNotifications(a.Config.NotifyEnabled, a.Config.NotifyGroups, a.Config.NotifyShowPreview)
 

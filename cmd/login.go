@@ -5,12 +5,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	waLog "go.mau.fi/whatsmeow/util/log"
 
 	"github.com/codebyoketch/wa-cli/internal/chatstore"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
-	"github.com/codebyoketch/wa-cli/internal/store"
-	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 var loginCmd = &cobra.Command{
@@ -19,14 +16,7 @@ var loginCmd = &cobra.Command{
 	Long:  `Login to your WhatsApp account by scanning a QR code with your phone.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		dbLog := waLog.Stdout("Database", "WARN", true)
-
-		container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-		if err != nil {
-			return err
-		}
-
-		client, err := whatsapp.New(ctx, container, dbLog, chatstore.New(a.Config.DataDir), msgstore.New(a.Config.DataDir))
+		client, err := openClient(ctx, libLog(), chatstore.New(a.Config.DataDir), msgstore.New(a.Config.DataDir))
 		if err != nil {
 			return err
 		}

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -10,15 +9,12 @@ import (
 
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
-	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/codebyoketch/wa-cli/internal/chatstore"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
 	"github.com/codebyoketch/wa-cli/internal/ratelimit"
 	"github.com/codebyoketch/wa-cli/internal/safety"
-	"github.com/codebyoketch/wa-cli/internal/store"
-	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 // completeChatNames returns chat names from the local chatstore cache
@@ -188,30 +184,4 @@ func recordSentMessage(ms *msgstore.Store, jid types.JID, msgID, text string) {
 	if err != nil {
 		a.Log.Warn("failed to record sent message", "error", err)
 	}
-}
-
-// connectForSend opens a session-store-backed, connected client ready to
-// send. Callers must defer client.Disconnect().
-func connectForSend(ctx context.Context) (*whatsapp.Client, *chatstore.Store, *msgstore.Store, error) {
-	dbLog := waLog.Stdout("Database", "WARN", true)
-	container, err := store.Open(ctx, a.Config.DataDir, dbLog)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	cs := chatstore.New(a.Config.DataDir)
-	ms := msgstore.New(a.Config.DataDir)
-
-	client, err := whatsapp.New(ctx, container, dbLog, cs, ms)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if !client.IsLoggedIn() {
-		return nil, nil, nil, fmt.Errorf("not logged in: run 'wa login' first")
-	}
-	if err := client.Connect(ctx); err != nil {
-		return nil, nil, nil, err
-	}
-
-	return client, cs, ms, nil
 }

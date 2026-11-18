@@ -17,6 +17,7 @@ import (
 	"github.com/codebyoketch/wa-cli/internal/app"
 	"github.com/codebyoketch/wa-cli/internal/chatstore"
 	"github.com/codebyoketch/wa-cli/internal/conin"
+	waerrors "github.com/codebyoketch/wa-cli/internal/errors"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
 	"github.com/codebyoketch/wa-cli/internal/store"
 	"github.com/codebyoketch/wa-cli/internal/termimg"
@@ -161,7 +162,7 @@ func Run(a *app.App) error {
 		return err
 	}
 	if !client.IsLoggedIn() {
-		return fmt.Errorf("not logged in: run 'wa login' first")
+		return waerrors.ErrNotLoggedIn
 	}
 	client.SetNotifications(a.Config.NotifyEnabled, a.Config.NotifyGroups, a.Config.NotifyShowPreview)
 	client.SetBehavior(whatsapp.Behavior{
