@@ -30,10 +30,6 @@ A WhatsApp client for your terminal, built in Go on top of [whatsmeow](https://g
 
 ## Demo
 
-```sh
-vhs docs/demo.tape   # generates docs/demo.gif — see the tape file for setup
-```
-
 ![wa-cli demo](./docs/demo.gif)
 
 ## Why
@@ -260,11 +256,16 @@ wa chat mute <chat>                          # suppress notifications for one ch
 ## Development
 
 ```sh
+make verify  # build, go vet, gofmt check and tests: run before every commit
 make build   # compile ./bin/wa
-make test    # go test ./...
-make lint    # golangci-lint run
+make test    # go test -race -cover ./...
+make lint    # golangci-lint run (install it first)
 make fmt     # gofmt -w .
 ```
+
+`WA_DEMO=1 go run .` opens the TUI on made-up chats, with no account.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for how the tests and packages
+are laid out.
 
 ## Roadmap
 

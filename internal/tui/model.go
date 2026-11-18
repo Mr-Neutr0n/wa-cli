@@ -6,6 +6,8 @@
 //   - model.go (this file) holds the state and reacts to everything that
 //     happens: keys (keys.go), results of background work (actions.go)
 //     and events from WhatsApp.
+//   - modal.go: whatever is open on top (a question, a prompt, the
+//     reaction picker, overlay.go's lists, the viewer) gets the keys first.
 //   - chatlist.go, messages.go and view.go draw the three areas; editor.go
 //     is the message box; viewer.go shows photos full screen.
 //

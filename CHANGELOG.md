@@ -8,6 +8,26 @@ from v1.0.0 onward.
 
 ## [Unreleased]
 
+### Clean-up
+
+Fixed
+
+- The TUI said an attached `.mkv`, `.webm` or `.avi` would go as a
+  video and a `.flac` as audio, but all four are sent as documents; it
+  showed `.oga` and `.jpe` files as documents, though they go as audio
+  and a photo. The label now comes from the same table the sender uses.
+- The TUI kept its own copy of the text sanitizer, which let bytes that
+  aren't UTF-8 through to the terminal (a raw `0x9b` is an escape
+  sequence to some terminals). It now uses the CLI's sanitizer, which
+  shows them as `�`.
+
+Changed
+
+- `make verify` builds, vets, checks `gofmt` and runs the tests: the one
+  check to run before a commit.
+- Removed the unused pre-Cobra command router (`internal/cli`) and other
+  code nothing called.
+
 ### TUI overhaul
 
 Fixed

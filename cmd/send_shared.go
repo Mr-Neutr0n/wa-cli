@@ -21,7 +21,7 @@ import (
 // completeChatNames returns chat names from the local chatstore cache
 // matching the toComplete prefix, for use in ValidArgsFunction across
 // every command that takes a chat name/JID as an argument. Reads the
-// local JSON index only — never opens a WhatsApp connection — so it's
+// local chat store only — never opens a WhatsApp connection — so it's
 // safe to call on every Tab press without competing with 'wa watch' for
 // WhatsApp's single-connection-per-device slot.
 func completeChatNames(toComplete string) []string {

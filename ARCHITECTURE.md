@@ -89,7 +89,7 @@ library code:
 - **`cmd/json.go`** — the `--json` flag, `useJSON(cmd)` (flag overrides
   the `jsonOutput` config default for one call), and `printJSON`, the
   single encoder every JSON-mode command funnels through.
-- **`cmd/stdlog.go`** — `captureLibraryStdout(fn)`, which redirects
+- **`cmd/std_log.go`** — `captureLibraryStdout(fn)`, which redirects
   `os.Stdout` to `os.Stderr` for the duration of any whatsmeow call.
   whatsmeow's own logger (`waLog.Stdout`, see `internal/whatsapp`) writes
   directly to the process-wide stdout with no injectable writer; without
@@ -97,9 +97,20 @@ library code:
   output and break anything parsing it (`wa chat list --json | jq`).
   `internal/tui` hit the same problem and solved it the same way
   (redirect to a log file instead, since the TUI owns the whole screen).
+- **`cmd/client.go`** — `openClient`, `loggedInClient` and
+  `connectedClient`: the only places a command opens the session store
+  and builds a `whatsapp.Client`.
 - **`cmd/send_shared.go`** — the resolve-recipient / rate-limit /
   confirm-new-recipient logic shared by `chat send`, `chat reply`,
   `chat forward`, and `media send`.
+- **`cmd/completion.go`** — besides `wa completion`, `completeFirstArg`
+  and `withPrefix`, which every command's shell completion goes through.
+
+Rules about WhatsApp itself (what a JID is, how a phone number becomes
+one, how a file will be sent, how to make someone else's text safe to
+print) live in `internal/whatsapp` and are called from `cmd/` and
+`internal/tui`, not rewritten there: `IsGroupJID`, `PhoneJID`,
+`AttachmentKind`, `Sanitize`.
 
 ## `internal/app` — shared dependencies
 
@@ -269,10 +280,22 @@ WhatsApp events ──────┘     │                 └── results 
                         model.View ─► chat list │ header, messages, message box
 ```
 
-- `model.go` holds the state and reacts to every event; `keys.go` maps
-  keys to actions for whichever area has focus (chat list, message box,
-  a selected message) or whatever is temporarily on top (a question,
-  the reaction picker, an overlay, the photo viewer).
+- `model.go` holds the state and reacts to every event. `actions.go`
+  holds the background work (`tea.Cmd`s) and the messages that bring
+  its results back.
+- `keys.go` maps keys to actions for whichever area has focus: the chat
+  list, the message box, or a selected message. The chat list's
+  Ctrl+P/A/T/U are `chatCommand` values in one table (`chatCommands`),
+  run on the highlighted chat.
+- Anything temporarily on top takes the keyboard first: the photo
+  viewer, a yes/no question, a one-line prompt, an overlay, or the
+  reaction picker. Each implements the `modal` interface (`modal.go`:
+  `key` and `help`), and `model.modal()` says which one is in charge,
+  so the order is written once. `overlay.go` is the list drawn in place
+  of the messages for help, search, forwarding and chat info.
+- `chatlist.go`, `messages.go` and `view.go` draw the chat list, the
+  conversation and the frame around them; `suggest.go` (with
+  `mention.go` and `emoji.go`) is the @mention and :emoji dropdown.
 - `messages.go` keeps only a window of the open chat in memory (80
   messages at a time, more as you scroll up) and draws each message
   once, re-drawing it only when it, the width, or its picture changes.
@@ -282,7 +305,14 @@ WhatsApp events ──────┘     │                 └── results 
   characters in it; only a deliberate Enter sends.
 - `viewer.go` shows a photo full screen. Pixels can't go through Bubble
   Tea (it only knows text), so the viewer shows an empty frame and
-  writes the picture straight to the terminal over it.
+  writes the picture straight to the terminal over it. Each image
+  protocol is a `photoDrawer` in `photoDrawers`, indexed by
+  `termimg.Protocol`: half blocks (text in the frame), iTerm2 (the file
+  itself), and Sixel and Kitty (scaled pixels). `m` steps through them.
+- `preview.go` draws the small in-chat pictures from thumbnails, one
+  load at a time, and caches the drawn text.
+- `run.go` wires it all up, and also starts the one-time import of the
+  old JSON stores (`wa migrate-store`) in a child process when needed.
 
 ### Why Windows has its own input reader (`internal/conin`)
 
