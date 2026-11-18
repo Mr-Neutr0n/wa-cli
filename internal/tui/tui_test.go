@@ -506,6 +506,47 @@ func TestAttachmentSaysHowItIsSent(t *testing.T) {
 	}
 }
 
+// Each chat-list key runs its command on the highlighted chat, toggling
+// the setting from what the chat shows now. Contacts without a chat have
+// nothing to change.
+func TestChatListCommands(t *testing.T) {
+	be := threeChats()
+	be.chats[0].Pinned = true
+	be.chats[0].MutedUntil = -1
+	h := newHarness(t, be, 100, 30)
+	if h.m.selectedJID != "1@s.whatsapp.net" {
+		t.Fatalf("selected %q, want Alice", h.m.selectedJID)
+	}
+	for _, k := range []tea.KeyType{tea.KeyCtrlP, tea.KeyCtrlA, tea.KeyCtrlT, tea.KeyCtrlU} {
+		h.key(k)
+	}
+	want := []string{
+		"pin 1@s.whatsapp.net false",
+		"archive 1@s.whatsapp.net true",
+		"mute 1@s.whatsapp.net false", // muted on the phone: unmute
+		"unread 1@s.whatsapp.net",
+	}
+	if strings.Join(be.settings, "|") != strings.Join(want, "|") {
+		t.Fatalf("settings = %q, want %q", be.settings, want)
+	}
+
+	h.m.chats[h.m.chatIdx["1@s.whatsapp.net"]].UnreadCount = 2
+	h.m.refilter()
+	h.key(tea.KeyCtrlU)
+	if len(be.read) != 1 || be.read[0] != "1@s.whatsapp.net" {
+		t.Fatalf("ctrl+u on an unread chat: read = %v", be.read)
+	}
+
+	h.typeText("zed") // only the contact matches
+	if h.m.selectedJID != "999@s.whatsapp.net" {
+		t.Fatalf("selected %q, want the contact", h.m.selectedJID)
+	}
+	h.key(tea.KeyCtrlP)
+	if len(be.settings) != len(want) {
+		t.Fatalf("a contact row changed settings: %q", be.settings[len(want):])
+	}
+}
+
 // Whatever is open on top owns the keys and the help line; with nothing
 // open, the focused area does. A photo that finishes loading opens over
 // anything else and gives the keys back when it closes.

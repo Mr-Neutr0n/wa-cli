@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"reflect"
 	"strings"
@@ -44,6 +45,7 @@ type fakeBackend struct {
 	typing   []bool
 	drafts   map[string]string
 	pinned   map[string]bool
+	settings []string // chat settings changed, as "pin <jid> true"
 	older    int
 }
 
@@ -194,14 +196,34 @@ func (f *fakeBackend) MarkChatRead(_ context.Context, chatJID string) error {
 	return nil
 }
 
-func (f *fakeBackend) MarkChatUnread(context.Context, string) error { return nil }
-
-func (f *fakeBackend) SetPinned(_ context.Context, jid string, on bool) error {
-	f.pinned[jid] = on
+func (f *fakeBackend) MarkChatUnread(_ context.Context, jid string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.settings = append(f.settings, "unread "+jid)
 	return nil
 }
-func (f *fakeBackend) SetArchived(context.Context, string, bool) error { return nil }
-func (f *fakeBackend) SetMuted(context.Context, string, bool) error    { return nil }
+
+func (f *fakeBackend) SetPinned(_ context.Context, jid string, on bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.pinned[jid] = on
+	f.settings = append(f.settings, fmt.Sprintf("pin %s %v", jid, on))
+	return nil
+}
+
+func (f *fakeBackend) SetArchived(_ context.Context, jid string, on bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.settings = append(f.settings, fmt.Sprintf("archive %s %v", jid, on))
+	return nil
+}
+
+func (f *fakeBackend) SetMuted(_ context.Context, jid string, on bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.settings = append(f.settings, fmt.Sprintf("mute %s %v", jid, on))
+	return nil
+}
 
 func (f *fakeBackend) SetDraft(jid, text string) error {
 	f.mu.Lock()

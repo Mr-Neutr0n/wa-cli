@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -106,6 +107,9 @@ func keyText(msg tea.KeyMsg) string {
 // --- chat list ---
 
 func (m *model) listKey(msg tea.KeyMsg) tea.Cmd {
+	if cmd, ok := chatCommands[msg.Type]; ok {
+		return m.runOnSelected(cmd)
+	}
 	switch msg.Type {
 	case tea.KeyUp:
 		return m.moveSelection(-1)
@@ -131,14 +135,6 @@ func (m *model) listKey(msg tea.KeyMsg) tea.Cmd {
 			return m.setFilter(string(r[:len(r)-1]))
 		}
 		return nil
-	case tea.KeyCtrlU:
-		return m.chatAction("unread")
-	case tea.KeyCtrlP:
-		return m.chatAction("pin")
-	case tea.KeyCtrlA:
-		return m.chatAction("archive")
-	case tea.KeyCtrlT:
-		return m.chatAction("mute")
 	case tea.KeyCtrlR:
 		m.showArchived = !m.showArchived
 		m.refilter()
@@ -152,27 +148,38 @@ func (m *model) listKey(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-// chatAction toggles a property of the highlighted chat.
-func (m *model) chatAction(what string) tea.Cmd {
+// A chatCommand changes one setting of a chat. Each is bound to a key in
+// the chat list and runs on the highlighted chat, in the background.
+type chatCommand func(ctx context.Context, be Backend, c chatItem) error
+
+// chatCommands are the chat list's keys for changing the highlighted chat.
+var chatCommands = map[tea.KeyType]chatCommand{
+	tea.KeyCtrlP: func(ctx context.Context, be Backend, c chatItem) error {
+		return be.SetPinned(ctx, c.JID, !c.Pinned)
+	},
+	tea.KeyCtrlA: func(ctx context.Context, be Backend, c chatItem) error {
+		return be.SetArchived(ctx, c.JID, !c.Archived)
+	},
+	tea.KeyCtrlT: func(ctx context.Context, be Backend, c chatItem) error {
+		return be.SetMuted(ctx, c.JID, !(c.Muted || c.MutedUntil != 0))
+	},
+	tea.KeyCtrlU: func(ctx context.Context, be Backend, c chatItem) error {
+		if c.unread() {
+			return be.MarkChatRead(ctx, c.JID)
+		}
+		return be.MarkChatUnread(ctx, c.JID)
+	},
+}
+
+// runOnSelected runs cmd on the highlighted chat. A contact you have no
+// chat with yet has no settings to change.
+func (m *model) runOnSelected(cmd chatCommand) tea.Cmd {
 	c, ok := m.selectedItem()
 	if !ok || c.contact {
 		return nil
 	}
-	ctx, be, jid := m.ctx, m.be, c.JID
-	switch what {
-	case "pin":
-		return do(func() error { return be.SetPinned(ctx, jid, !c.Pinned) })
-	case "archive":
-		return do(func() error { return be.SetArchived(ctx, jid, !c.Archived) })
-	case "mute":
-		return do(func() error { return be.SetMuted(ctx, jid, !(c.Muted || c.MutedUntil != 0)) })
-	case "unread":
-		if c.unread() {
-			return do(func() error { return be.MarkChatRead(ctx, jid) })
-		}
-		return do(func() error { return be.MarkChatUnread(ctx, jid) })
-	}
-	return nil
+	ctx, be := m.ctx, m.be
+	return do(func() error { return cmd(ctx, be, c) })
 }
 
 // --- message box ---
