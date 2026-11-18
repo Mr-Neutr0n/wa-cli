@@ -9,7 +9,10 @@ BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 LDFLAGS := -X $(PKG).Version=$(VERSION) -X $(PKG).Commit=$(COMMIT) -X $(PKG).BuildDate=$(BUILD_DATE)
 
-.PHONY: all build test lint fmt vet clean run install
+# -race needs cgo and a C compiler; run `make test TESTFLAGS=` without one.
+TESTFLAGS ?= -race -cover
+
+.PHONY: all build test lint fmt fmt-check vet verify clean run install
 
 all: build
 
@@ -24,7 +27,7 @@ install:
 	go install -ldflags "$(LDFLAGS)" $(CMD_DIR)
 
 test:
-	go test -race -cover ./...
+	go test $(TESTFLAGS) ./...
 
 vet:
 	go vet ./...
@@ -32,7 +35,20 @@ vet:
 fmt:
 	gofmt -w .
 
+fmt-check:
+	@files="$$(gofmt -l .)"; \
+	if [ -n "$$files" ]; then echo "Not gofmt-formatted (run 'make fmt'):"; echo "$$files"; exit 1; fi
+
+# verify is the check to pass before every commit: every package builds,
+# vet and gofmt are clean, and the tests pass.
+verify:
+	go build ./...
+	go vet ./...
+	@$(MAKE) --no-print-directory fmt-check
+	go test $(TESTFLAGS) ./...
+
 lint:
+	@command -v golangci-lint >/dev/null || { echo "golangci-lint is not installed: https://golangci-lint.run/welcome/install/"; exit 1; }
 	golangci-lint run ./...
 
 clean:
