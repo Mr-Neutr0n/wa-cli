@@ -20,17 +20,8 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	if m.pastedBurst(msg) {
 		return m.burstKey(msg)
 	}
-	switch {
-	case m.viewer != nil:
-		return m.viewer.key(m, msg)
-	case m.confirm != nil:
-		return m.confirm.key(m, msg)
-	case m.prompt != nil:
-		return m.prompt.key(m, msg)
-	case m.overlay != nil:
-		return m.overlay.key(m, msg)
-	case m.react != nil:
-		return m.react.key(m, msg)
+	if md := m.modal(); md != nil {
+		return md.key(m, msg)
 	}
 	if msg.Type == tea.KeyF1 {
 		return m.openHelp()
@@ -73,7 +64,7 @@ func (m *model) pastedBurst(msg tea.KeyMsg) bool {
 // burstKey handles a key that is part of a pasted burst: text where text
 // is being written, otherwise nothing.
 func (m *model) burstKey(msg tea.KeyMsg) tea.Cmd {
-	plain := m.viewer == nil && m.confirm == nil && m.prompt == nil && m.overlay == nil && m.react == nil
+	plain := m.modal() == nil
 	switch {
 	case plain && m.focus == focusInput && m.openJID != "":
 		if msg.Type == tea.KeyEnter {

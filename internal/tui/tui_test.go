@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
+	"github.com/codebyoketch/wa-cli/internal/termimg"
 	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
@@ -502,6 +503,52 @@ func TestAttachmentSaysHowItIsSent(t *testing.T) {
 				t.Errorf("sent = %+v, want Voice=%v", be.sent, tc.voice)
 			}
 		})
+	}
+}
+
+// Whatever is open on top owns the keys and the help line; with nothing
+// open, the focused area does. A photo that finishes loading opens over
+// anything else and gives the keys back when it closes.
+func TestModalOwnsKeysAndHelpLine(t *testing.T) {
+	be := threeChats()
+	h := newHarness(t, be, 120, 30)
+	h.key(tea.KeyEnter) // open Alice
+	if md := h.m.modal(); md != nil {
+		t.Fatalf("modal = %T with nothing open", md)
+	}
+
+	h.key(tea.KeyUp) // select the last message
+	h.typeText("e")  // react to it
+	if _, ok := h.m.modal().(*reactPicker); !ok {
+		t.Fatalf("modal = %T, want the reaction picker", h.m.modal())
+	}
+	if !strings.Contains(h.frame(), "enter react") {
+		t.Error("help line doesn't describe the reaction picker")
+	}
+	h.key(tea.KeyRight)
+	h.key(tea.KeyEnter)
+	if len(be.reacted) != 1 || be.reacted[0] != "a2="+quickReactions[1] {
+		t.Fatalf("reacted = %v", be.reacted)
+	}
+
+	h.typeText("?")
+	if o, ok := h.m.modal().(*overlay); !ok || o.kind != overlayHelp {
+		t.Fatalf("modal = %T, want the help overlay", h.m.modal())
+	}
+	h.m.viewer = &viewer{proto: termimg.Blocks}
+	if _, ok := h.m.modal().(*viewer); !ok {
+		t.Fatalf("modal = %T, want the viewer on top", h.m.modal())
+	}
+	h.typeText("x") // any key closes the viewer
+	if _, ok := h.m.modal().(*overlay); !ok {
+		t.Fatalf("after the viewer: modal = %T, want the help overlay back", h.m.modal())
+	}
+	h.key(tea.KeyEsc)
+	if md := h.m.modal(); md != nil || h.m.focus != focusMessages {
+		t.Fatalf("after esc: modal = %T, focus = %d", md, h.m.focus)
+	}
+	if !strings.Contains(h.frame(), "r reply") {
+		t.Error("help line doesn't describe the selected message's keys")
 	}
 }
 

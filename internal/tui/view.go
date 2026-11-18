@@ -221,19 +221,14 @@ func (m *model) renderInput(l layout) string {
 	case m.attach != nil:
 		placeholder = "Add a caption… (Enter sends the file)"
 	}
-	focused := m.focus == focusInput && m.overlay == nil && m.prompt == nil && m.confirm == nil && m.react == nil
+	focused := m.focus == focusInput && m.modal() == nil
 	return style.Padding(0, 1).Width(l.paneW - 2).Render(m.ed.View(focused, placeholder))
 }
 
 // helpText is the bottom line: the keys that work right now.
 func (m *model) helpText() string {
-	switch {
-	case m.confirm != nil, m.prompt != nil:
-		return "enter confirm · esc cancel"
-	case m.react != nil:
-		return "←/→ choose · enter react · type any emoji · del remove yours · esc cancel"
-	case m.overlay != nil:
-		return m.overlay.help()
+	if md := m.modal(); md != nil {
+		return md.help()
 	}
 	switch m.focus {
 	case focusChatList:

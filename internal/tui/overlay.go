@@ -30,6 +30,8 @@ type confirmPrompt struct {
 // way (a paste, a held key), far shorter than reading the question takes.
 const confirmDelay = 350 * time.Millisecond
 
+func (c *confirmPrompt) help() string { return "enter confirm · esc cancel" }
+
 func (c *confirmPrompt) key(m *model, msg tea.KeyMsg) tea.Cmd {
 	m.confirm = nil
 	if msg.Paste || time.Since(c.opened) < confirmDelay {
@@ -48,6 +50,8 @@ type linePrompt struct {
 	ed     editor
 	submit func(m *model, text string) tea.Cmd
 }
+
+func (p *linePrompt) help() string { return "enter confirm · esc cancel" }
 
 func (p *linePrompt) key(m *model, msg tea.KeyMsg) tea.Cmd {
 	switch msg.Type {
@@ -141,6 +145,10 @@ func (r *reactPicker) send(m *model, emoji string) tea.Cmd {
 	m.react = nil
 	ctx, be, target := m.ctx, m.be, r.target.Message
 	return do(func() error { return be.React(ctx, target, emoji) })
+}
+
+func (r *reactPicker) help() string {
+	return "←/→ choose · enter react · type any emoji · del remove yours · esc cancel"
 }
 
 func (r *reactPicker) key(m *model, msg tea.KeyMsg) tea.Cmd {

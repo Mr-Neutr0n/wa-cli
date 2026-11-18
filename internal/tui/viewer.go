@@ -234,8 +234,12 @@ func (v *viewer) view(m *model) string {
 	if v.loading {
 		parts = append(parts, "loading…")
 	}
-	caption := strings.Join(parts, " · ") + "    " + v.proto.String() + " · m mode · o open · s save · any key closes"
+	caption := strings.Join(parts, " · ") + "    " + v.help()
 	return strings.Join(lines[:rows], "\n") + "\n" + helpStyle.Render(truncate(caption, m.width))
+}
+
+func (v *viewer) help() string {
+	return v.proto.String() + " · m mode · o open · s save · any key closes"
 }
 
 func (v *viewer) key(m *model, msg tea.KeyMsg) tea.Cmd {
