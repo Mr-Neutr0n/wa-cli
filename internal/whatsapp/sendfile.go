@@ -129,6 +129,28 @@ func detectFile(name string, head []byte) (fileKind, string) {
 	return fileDocument, sniffed // "application/octet-stream" at worst
 }
 
+// AttachmentKind says how a file named name is sent, going by its
+// extension: KindImage, KindVideo, KindVoice (Opus in Ogg), KindAudio or
+// KindDocument. The file itself can still change that when it is sent:
+// an image too large to process goes as a document, and a file with an
+// unknown extension is judged by its first bytes.
+func AttachmentKind(name string) string {
+	ft, ok := fileTypes[strings.ToLower(filepath.Ext(name))]
+	switch {
+	case !ok:
+		return KindDocument
+	case ft.kind == fileImage:
+		return KindImage
+	case ft.kind == fileVideo:
+		return KindVideo
+	case ft.kind == fileAudio && ft.mime == oggOpus:
+		return KindVoice
+	case ft.kind == fileAudio:
+		return KindAudio
+	}
+	return KindDocument
+}
+
 // maxImageSide is the longest side an image may have to be sent as it
 // is, about what WhatsApp itself sends as "HD". maxImageBytes is the
 // largest file sent as an image rather than a document.

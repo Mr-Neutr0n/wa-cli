@@ -113,20 +113,16 @@ func (m *model) setAttachment(path string) tea.Cmd {
 	return nil
 }
 
-// fileKind says how a file will be sent, from its extension.
+// fileKind says how a file will be sent.
 func fileKind(path string) string {
-	ext := ""
-	if i := strings.LastIndexByte(path, '.'); i >= 0 {
-		ext = strings.ToLower(path[i+1:])
-	}
-	switch ext {
-	case "jpg", "jpeg", "png", "webp", "bmp", "gif":
+	switch whatsapp.AttachmentKind(path) {
+	case whatsapp.KindImage:
 		return "a photo (full quality)"
-	case "mp4", "mov", "m4v", "webm", "mkv", "3gp", "avi":
+	case whatsapp.KindVideo:
 		return "a video"
-	case "ogg", "opus":
+	case whatsapp.KindVoice:
 		return "a voice message"
-	case "mp3", "m4a", "aac", "wav", "flac", "amr":
+	case whatsapp.KindAudio:
 		return "audio"
 	}
 	return "a document"

@@ -470,6 +470,41 @@ func TestPastedFilePathBecomesAttachment(t *testing.T) {
 	}
 }
 
+// The attachment bar says what the file goes as, and that has to be what
+// the backend actually sends: a .mkv goes as a document, not a video.
+func TestAttachmentSaysHowItIsSent(t *testing.T) {
+	cases := []struct {
+		name, label string
+		voice       bool
+	}{
+		{"clip.mkv", "as a document", false},
+		{"song.flac", "as a document", false},
+		{"note.ogg", "as a voice message", true},
+		{"note.oga", "as audio", false},
+		{"photo.jpe", "as a photo (full quality)", false},
+		{"film.mp4", "as a video", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			be := threeChats()
+			h := newHarness(t, be, 120, 30)
+			h.key(tea.KeyEnter)
+			path := filepath.Join(t.TempDir(), tc.name)
+			if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			h.paste(path)
+			if !strings.Contains(h.frame(), tc.label) {
+				t.Errorf("attachment bar doesn't say %q", tc.label)
+			}
+			h.key(tea.KeyEnter)
+			if len(be.sent) != 1 || be.sent[0].out.Voice != tc.voice {
+				t.Errorf("sent = %+v, want Voice=%v", be.sent, tc.voice)
+			}
+		})
+	}
+}
+
 func TestEmojiCompletion(t *testing.T) {
 	be := threeChats()
 	h := newHarness(t, be, 100, 30)

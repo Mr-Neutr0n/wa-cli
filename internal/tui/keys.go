@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -380,8 +379,7 @@ func (m *model) send() tea.Cmd {
 	}
 	if m.attach != nil {
 		out.FilePath, out.AsDocument = m.attach.path, m.attach.asDocument
-		ext := strings.ToLower(filepath.Ext(m.attach.path))
-		out.Voice = !out.AsDocument && (ext == ".ogg" || ext == ".opus")
+		out.Voice = !out.AsDocument && whatsapp.AttachmentKind(m.attach.path) == whatsapp.KindVoice
 	}
 
 	m.ed.Reset()

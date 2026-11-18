@@ -10,12 +10,31 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.mau.fi/whatsmeow"
 
 	"github.com/codebyoketch/wa-cli/internal/termimg"
 )
+
+// AttachmentKind must agree with how detectFile sends each known
+// extension, since the TUI shows its answer before sending.
+func TestAttachmentKindMatchesDetectFile(t *testing.T) {
+	for ext := range fileTypes {
+		kind, mime := detectFile("f"+ext, nil)
+		want := map[fileKind]string{fileImage: KindImage, fileVideo: KindVideo, fileAudio: KindAudio, fileDocument: KindDocument}[kind]
+		if mime == oggOpus {
+			want = KindVoice
+		}
+		if got := AttachmentKind("dir/F" + strings.ToUpper(ext)); got != want {
+			t.Errorf("AttachmentKind(%s) = %s, want %s", ext, got, want)
+		}
+	}
+	if got := AttachmentKind("archive.unknownext"); got != KindDocument {
+		t.Errorf("unknown extension: %s", got)
+	}
+}
 
 func TestDetectFile(t *testing.T) {
 	jpegHead := []byte{0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 'J', 'F', 'I', 'F', 0}
