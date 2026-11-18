@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -227,7 +226,7 @@ var mediaListCmd = &cobra.Command{
 			if m.FromMe {
 				who = "you"
 			}
-			ts := time.UnixMilli(m.Timestamp).Local().Format("15:04:05")
+			ts := clockTime(m.Timestamp)
 			fmt.Printf("[%d] (%s) %s sent %s %s", idx, ts, who, articleFor(m.MediaType), m.MediaType)
 			if m.Text != "" {
 				fmt.Printf(": %s", whatsapp.Sanitize(m.Text))

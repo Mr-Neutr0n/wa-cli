@@ -93,12 +93,7 @@ func resolveMessageRef(ms *msgstore.Store, chatJID, ref string) (msgstore.Messag
 // confirmation before a first-time send to jidStr. Call this BEFORE
 // connecting/sending.
 func checkSendGuards(jidStr string) error {
-	limiter := ratelimit.New(a.Config.DataDir, ratelimit.Config{
-		PerMinute: a.Config.MaxMessagesPerMinute,
-		PerHour:   a.Config.MaxMessagesPerHour,
-		PerDay:    a.Config.MaxMessagesPerDay,
-	})
-	ok, retryAfter, window, err := limiter.Allow()
+	ok, retryAfter, window, err := sendLimiter().Allow()
 	if err != nil {
 		return err
 	}
@@ -112,28 +107,42 @@ func checkSendGuards(jidStr string) error {
 		if err != nil {
 			return err
 		}
-		if !known {
-			fmt.Printf("You haven't messaged %s before. Send anyway? [y/N] ", jidStr)
-			var resp string
-			fmt.Scanln(&resp)
-			if strings.ToLower(strings.TrimSpace(resp)) != "y" {
-				return fmt.Errorf("cancelled")
-			}
+		if !known && !confirm(fmt.Sprintf("You haven't messaged %s before. Send anyway?", jidStr)) {
+			return fmt.Errorf("cancelled")
 		}
 	}
 	return nil
+}
+
+// sendLimiter is the rate limiter for outgoing messages, with the limits
+// from the config.
+func sendLimiter() *ratelimit.Limiter {
+	return ratelimit.New(a.Config.DataDir, ratelimit.Config{
+		PerMinute: a.Config.MaxMessagesPerMinute,
+		PerHour:   a.Config.MaxMessagesPerHour,
+		PerDay:    a.Config.MaxMessagesPerDay,
+	})
+}
+
+// confirm asks a yes/no question on the terminal; only "y" is yes.
+func confirm(prompt string) bool {
+	fmt.Printf("%s [y/N] ", prompt)
+	var resp string
+	fmt.Scanln(&resp)
+	return strings.ToLower(strings.TrimSpace(resp)) == "y"
+}
+
+// clockTime is a message's time of day as 'wa chat open' and
+// 'wa media list' print it.
+func clockTime(ms int64) string {
+	return time.UnixMilli(ms).Local().Format("15:04:05")
 }
 
 // recordSendGuards records a successful send against the rate limiter and
 // marks jidStr as a known recipient. Call this AFTER a send succeeds —
 // never before, and never on failure.
 func recordSendGuards(jidStr string) {
-	limiter := ratelimit.New(a.Config.DataDir, ratelimit.Config{
-		PerMinute: a.Config.MaxMessagesPerMinute,
-		PerHour:   a.Config.MaxMessagesPerHour,
-		PerDay:    a.Config.MaxMessagesPerDay,
-	})
-	if err := limiter.Record(); err != nil {
+	if err := sendLimiter().Record(); err != nil {
 		a.Log.Warn("failed to record send for rate limiting", "error", err)
 	}
 

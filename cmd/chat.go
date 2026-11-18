@@ -139,7 +139,7 @@ var chatOpenCmd = &cobra.Command{
 			case chat.IsGroup:
 				who = client.ResolveName(ctx, m.SenderJID)
 			}
-			ts := time.UnixMilli(m.Timestamp).Local().Format("15:04:05")
+			ts := clockTime(m.Timestamp)
 			fmt.Printf("[%d] (%s) %s: %s\n", i+1, ts, whatsapp.Sanitize(who), whatsapp.Sanitize(text))
 		}
 		fmt.Println("\nUse the [n] number with 'wa chat reply' or 'wa chat forward' to reference a message.")

@@ -205,13 +205,6 @@ func resolveJIDs(targets []string) ([]types.JID, error) {
 	return jids, nil
 }
 
-func confirm(prompt string) bool {
-	fmt.Printf("%s [y/N] ", prompt)
-	var resp string
-	fmt.Scanln(&resp)
-	return strings.ToLower(strings.TrimSpace(resp)) == "y"
-}
-
 func groupParticipantChange(groupTarget string, participantTargets []string, add bool) error {
 	ctx := context.Background()
 	client, err := connectedClient(ctx, nil, nil)
