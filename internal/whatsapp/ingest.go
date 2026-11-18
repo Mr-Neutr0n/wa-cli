@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"go.mau.fi/whatsmeow/proto/waCommon"
@@ -69,7 +70,7 @@ func (c *Client) incomingFromEvent(evt *events.Message, chat types.JID) incoming
 // that is about another message is folded into it. Only a newly stored
 // row counts as unread, moves the chat up the list or notifies.
 func (c *Client) ingestMessage(evt *events.Message) {
-	if evt == nil || isPseudoChat(evt.Info.Chat.String()) {
+	if evt == nil || isPseudoChat(evt.Info.Chat.String()) || !validMessageID(evt.Info.ID) {
 		return
 	}
 	chat := c.chatFor(&evt.Info.MessageSource)
@@ -85,12 +86,22 @@ func (c *Client) ingestMessage(evt *events.Message) {
 	if bot := evt.Info.MsgBotInfo; bot.EditType == types.EditTypeInner || bot.EditType == types.EditTypeLast {
 		replaces = bot.EditTargetID
 	}
+	if !validMessageID(replaces) {
+		return
+	}
 
 	c.foldMu.Lock()
 	res := c.ingest(context.Background(), in, replaces)
 	c.foldMu.Unlock()
 
 	c.announce(in, res, evt.Info.PushName)
+}
+
+// validMessageID reports whether id may be stored as a message ID. The
+// sending app chooses the ID and file names are made from it, so one
+// with a path separator is refused here rather than trusted later.
+func validMessageID(id string) bool {
+	return !strings.ContainsAny(id, `/\`)
 }
 
 // ingest stores or folds one message. In the result Store is set only
@@ -592,8 +603,11 @@ func (c *Client) ingestHistorySync(evt *events.HistorySync) {
 			if wmi.GetMessage() == nil {
 				continue // a system notice without content
 			}
+			if !validMessageID(wmi.GetKey().GetID()) {
+				continue
+			}
 			parsed, err := c.WA.ParseWebMessage(raw, wmi)
-			if err != nil {
+			if err != nil || !validMessageID(parsed.Info.ID) {
 				continue
 			}
 			in := c.incomingFromEvent(parsed, chat)

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
+	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 var mediaCmd = &cobra.Command{
@@ -162,8 +163,8 @@ omitted, a filename is derived from the message ID and the media's type.`,
 		outPath := ""
 		if len(args) == 3 {
 			outPath = args[2]
-		} else {
-			outPath = defaultDownloadPath(msg, mimetype)
+		} else if outPath, err = whatsapp.DownloadPath(".", msg, mimetype); err != nil {
+			return err
 		}
 
 		if err := os.WriteFile(outPath, data, 0o644); err != nil {
@@ -270,17 +271,4 @@ func readMediaFile(path string) ([]byte, string, error) {
 // WhatsApp will accept upload-wise but then fail to play as a voice note.
 func looksLikeOgg(data []byte) bool {
 	return len(data) >= 4 && string(data[:4]) == "OggS"
-}
-
-// defaultDownloadPath derives a filename from the message ID and a
-// guessed extension for mimetype, used when no output path is given.
-func defaultDownloadPath(msg msgstore.Message, mimetype string) string {
-	name := msg.ID
-	if name == "" {
-		name = fmt.Sprintf("%d", msg.Timestamp)
-	}
-	if exts, err := mime.ExtensionsByType(mimetype); err == nil && len(exts) > 0 {
-		return name + exts[0]
-	}
-	return name
 }

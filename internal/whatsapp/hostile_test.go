@@ -7,8 +7,12 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	"go.mau.fi/whatsmeow/proto/waCommon"
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/proto/waHistorySync"
+	"go.mau.fi/whatsmeow/proto/waWeb"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
@@ -157,6 +161,79 @@ func TestMediaFileNames_UnknownTypeGetsNoRunnableExtension(t *testing.T) {
 		} else if got != tc.want {
 			t.Errorf("%s: saved as %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+func TestIngest_MessageIDWithPathSeparatorIsRefused(t *testing.T) {
+	tc := newStoreClient(t)
+	for _, id := range []string{"../../.bashrc", "/etc/passwd", `..\..\evil`, "a/b"} {
+		tc.ingestMessage(liveEvent(ashaPN, ashaPN, id, imageMsg("/v/x", "hi"), false))
+		if _, ok, _ := tc.msgs.Get(ashaPN.String(), id); ok {
+			t.Errorf("message with ID %q was stored", id)
+		}
+	}
+	tc.ingestMessage(liveEvent(ashaPN, ashaPN, "3EB0OK", text("hi"), false))
+	tc.mustGet(t, ashaPN, "3EB0OK")
+}
+
+func TestIngestHistorySync_MessageIDWithPathSeparatorIsRefused(t *testing.T) {
+	tc := newRealClient(t)
+	chat := ashaPN.String()
+	msg := func(id string) *waHistorySync.HistorySyncMsg {
+		return &waHistorySync.HistorySyncMsg{Message: &waWeb.WebMessageInfo{
+			Key:              &waCommon.MessageKey{RemoteJID: proto.String(chat), FromMe: proto.Bool(false), ID: proto.String(id)},
+			Message:          text("from history"),
+			MessageTimestamp: proto.Uint64(uint64(time.Now().Unix())),
+		}}
+	}
+	tc.ingestHistorySync(&events.HistorySync{Data: &waHistorySync.HistorySync{
+		SyncType: waHistorySync.HistorySync_INITIAL_BOOTSTRAP.Enum(),
+		Conversations: []*waHistorySync.Conversation{{
+			ID:       proto.String(chat),
+			Messages: []*waHistorySync.HistorySyncMsg{msg("../escape"), msg(`..\escape`), msg("3EB0OK")},
+		}},
+	}})
+	for _, id := range []string{"../escape", `..\escape`} {
+		if _, ok, _ := tc.msgs.Get(chat, id); ok {
+			t.Errorf("history message with ID %q was stored", id)
+		}
+	}
+	tc.mustGet(t, ashaPN, "3EB0OK")
+}
+
+func TestDownloadPath_StaysInDirWithAKnownExtension(t *testing.T) {
+	dir := t.TempDir()
+	cases := []struct {
+		id, mime, want string
+	}{
+		{"3EB0ABCDEF", "image/jpeg", "3EB0ABCDEF.jpg"},
+		{"3EB0ABCDEF", "video/mp4; codecs=avc1", "3EB0ABCDEF.mp4"},
+		// The type the sender claims doesn't pick a runnable extension.
+		{"3EB0ABCDEF", "application/x-msdownload", "3EB0ABCDEF.bin"},
+		{"3EB0ABCDEF", "application/hta", "3EB0ABCDEF.bin"},
+		// Directories in the ID are dropped, whichever separator.
+		{"../../.ssh/authorized_keys", "text/plain", "authorized_keys.txt"},
+		{"/etc/cron.d/job", "text/plain", "job.txt"},
+		{`..\..\Startup\run`, "image/png", "run.png"},
+		{"..", "image/png", "png"},
+	}
+	for _, tc := range cases {
+		got, err := DownloadPath(dir, msgstore.Message{ID: tc.id}, tc.mime)
+		if err != nil {
+			t.Errorf("DownloadPath(%q, %q): %v", tc.id, tc.mime, err)
+			continue
+		}
+		if want := filepath.Join(dir, tc.want); got != want {
+			t.Errorf("DownloadPath(%q, %q) = %q, want %q", tc.id, tc.mime, got, want)
+		}
+	}
+
+	got, err := DownloadPath(dir, msgstore.Message{Timestamp: 1_700_000_000_000}, "image/jpeg")
+	if err != nil || got != filepath.Join(dir, "1700000000000.jpg") {
+		t.Errorf("message without an ID: %q, %v", got, err)
+	}
+	if got, err := DownloadPath(".", msgstore.Message{ID: "../up"}, "image/jpeg"); err != nil || got != "up.jpg" {
+		t.Errorf("relative dir: %q, %v; want %q", got, err, "up.jpg")
 	}
 }
 

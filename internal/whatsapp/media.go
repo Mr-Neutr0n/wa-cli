@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -150,8 +151,8 @@ func (c *Client) SaveMedia(ctx context.Context, m msgstore.Message, dir string) 
 	names := mediaFileNames(m, a)
 	target := ""
 	for i, name := range names {
-		path := filepath.Join(dir, name)
-		if rel, err := filepath.Rel(dir, path); err != nil || rel != name {
+		path, ok := pathIn(dir, name)
+		if !ok {
 			continue // never outside dir
 		}
 		st, err := os.Stat(path)
@@ -194,6 +195,29 @@ func (c *Client) SaveMedia(ctx context.Context, m msgstore.Message, dir string) 
 	}
 	markFromInternet(target)
 	return target, nil
+}
+
+// DownloadPath returns where to save m's attachment, of type mimeType,
+// when the user named no file: in dir, under the message ID made safe as
+// a file name, with the extension from mimeExtensions.
+func DownloadPath(dir string, m msgstore.Message, mimeType string) (string, error) {
+	name := m.ID
+	if name == "" {
+		name = strconv.FormatInt(m.Timestamp, 10)
+	}
+	path, ok := pathIn(dir, sanitizeFileName(name+extensionFor(mimeType)))
+	if !ok {
+		return "", waerrors.New("couldn't make a safe file name from message ID " + strconv.Quote(m.ID))
+	}
+	return path, nil
+}
+
+// pathIn joins dir and name, and reports whether the result is a file
+// directly in dir.
+func pathIn(dir, name string) (string, bool) {
+	path := filepath.Join(dir, name)
+	rel, err := filepath.Rel(dir, path)
+	return path, err == nil && rel == name
 }
 
 // markFromInternet tags a downloaded file the way browsers do on Windows
