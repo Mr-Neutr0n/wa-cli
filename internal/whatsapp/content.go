@@ -669,18 +669,6 @@ func Sanitize(s string) string {
 	}, s)
 }
 
-// extractPreview trims plain conversational text for display.
-func extractPreview(msg interface{ GetConversation() string }) string {
-	if msg == nil {
-		return ""
-	}
-	text := msg.GetConversation()
-	if runes := []rune(text); len(runes) > previewMaxRunes {
-		text = string(runes[:previewMaxRunes]) + "…"
-	}
-	return text
-}
-
 // previewText is the chat-list line for a message: its text, or a symbol
 // and label for media ("📷 Photo", "🎤 Voice message", "📄 file.pdf"),
 // with the caption in place of the label when there is one.
@@ -777,18 +765,4 @@ func (a analysis) quoteText() string {
 // content: the media type and the searchable text.
 func (a analysis) storedFields() (mediaType, text string) {
 	return a.MediaType, a.Text
-}
-
-// classifyMessage identifies a message's type (empty string for plain
-// text) and extracts its text content — the conversation/extended-text
-// body for text messages, or the caption (if any) for media messages.
-func classifyMessage(msg *waProto.Message) (mediaType, text string) {
-	a := analyze(unwrapMessage(msg))
-	if a.Class != classRow {
-		return "", ""
-	}
-	if a.Kind == KindUnsupported {
-		return "", ""
-	}
-	return a.storedFields()
 }

@@ -68,7 +68,6 @@ type Client struct {
 	// evMu guards the event handlers and behavior.
 	evMu       sync.RWMutex
 	onEvent    func(Event)
-	onIncoming func(msgstore.Message)
 	behavior   Behavior
 	wantOnline bool
 
@@ -184,16 +183,6 @@ func (c *Client) getBehavior() Behavior {
 	c.evMu.RLock()
 	defer c.evMu.RUnlock()
 	return c.behavior
-}
-
-// OnIncomingMessage registers fn to be called for every new message
-// stored from a live event. Superseded by OnEvent; kept for callers that
-// only want new messages. Only one callback is supported; a second call
-// replaces the first.
-func (c *Client) OnIncomingMessage(fn func(msgstore.Message)) {
-	c.evMu.Lock()
-	c.onIncoming = fn
-	c.evMu.Unlock()
 }
 
 // SetNotifications turns on desktop notifications for incoming messages.

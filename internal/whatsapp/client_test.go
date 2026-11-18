@@ -5,10 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
@@ -47,40 +45,6 @@ func TestIsPseudoChat(t *testing.T) {
 				t.Errorf("isPseudoChat(%q) = %v, want %v", tc.jid, got, tc.want)
 			}
 		})
-	}
-}
-
-// ---- extractPreview ----
-
-type fakeConversation struct{ text string }
-
-func (f fakeConversation) GetConversation() string { return f.text }
-
-func TestExtractPreview(t *testing.T) {
-	if got := extractPreview(nil); got != "" {
-		t.Errorf("nil message: got %q, want empty", got)
-	}
-
-	if got := extractPreview(fakeConversation{"hello there"}); got != "hello there" {
-		t.Errorf("short text: got %q, want %q", got, "hello there")
-	}
-
-	long := strings.Repeat("a", 100)
-	got := extractPreview(fakeConversation{long})
-	want := strings.Repeat("a", 80) + "…"
-	if got != want {
-		t.Errorf("long text not truncated correctly: got %d runes, want %d", len([]rune(got)), len([]rune(want)))
-	}
-
-	// The cut is between characters, never inside a multi-byte one (it
-	// used to cut at byte 80, leaving half an emoji or Devanagari letter).
-	multi := strings.Repeat("नमस्ते🙂", 30)
-	got = extractPreview(fakeConversation{multi})
-	if !utf8.ValidString(got) {
-		t.Errorf("preview is not valid UTF-8: %q", got)
-	}
-	if want := string([]rune(multi)[:80]) + "…"; got != want {
-		t.Errorf("multi-byte preview = %q, want %q", got, want)
 	}
 }
 
@@ -547,32 +511,6 @@ func TestIngestMessage_GroupMessage_DoesNotSetNameFromSender(t *testing.T) {
 	}
 	if !chat.IsGroup {
 		t.Error("expected IsGroup to be true")
-	}
-}
-
-func TestIngestMessage_CallsOnIncomingCallback(t *testing.T) {
-	c := newTestClient(t, true, true)
-	var received *msgstore.Message
-	c.OnIncomingMessage(func(m msgstore.Message) {
-		received = &m
-	})
-
-	chatJID := testJID("12345", types.DefaultUserServer)
-	evt := &events.Message{
-		Info: types.MessageInfo{
-			MessageSource: types.MessageSource{Chat: chatJID, Sender: chatJID},
-			ID:            "MSG4",
-			Timestamp:     time.Now(),
-		},
-		Message: &waProto.Message{Conversation: proto.String("callback test")},
-	}
-	c.ingestMessage(evt)
-
-	if received == nil {
-		t.Fatal("expected OnIncomingMessage callback to fire")
-	}
-	if received.Text != "callback test" {
-		t.Errorf("callback message text = %q, want %q", received.Text, "callback test")
 	}
 }
 

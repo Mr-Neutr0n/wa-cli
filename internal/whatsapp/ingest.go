@@ -273,13 +273,6 @@ func (c *Client) announce(in incoming, res applied, pushName string) {
 	c.emit(MessageEvent{ChatJID: row.ChatJID, ID: row.ID, New: true})
 	c.emit(ChatEvent{JID: row.ChatJID})
 
-	c.evMu.RLock()
-	callback := c.onIncoming
-	c.evMu.RUnlock()
-	if callback != nil {
-		callback(row)
-	}
-
 	c.maybeNotify(ctx, in, row, a, chat, pushName)
 }
 

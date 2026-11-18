@@ -13,6 +13,17 @@ import (
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
 )
 
+// classifyMessage is what the old store kept of a message: its media type
+// (empty for plain text) and its text or caption. Events and unsupported
+// messages kept nothing.
+func classifyMessage(msg *waProto.Message) (mediaType, text string) {
+	a := analyze(unwrapMessage(msg))
+	if a.Class != classRow || a.Kind == KindUnsupported {
+		return "", ""
+	}
+	return a.storedFields()
+}
+
 // seedLegacy fills the store the way the old JSON store's import leaves
 // it: every event-like message is a row of its own.
 func seedLegacy(t *testing.T, tc *testClient) {

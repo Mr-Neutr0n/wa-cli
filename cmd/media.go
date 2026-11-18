@@ -26,7 +26,7 @@ var mediaSendCmd = &cobra.Command{
 }
 
 // newMediaSendCmd builds one `wa media send <kind>` subcommand. kind must
-// match one of internal/whatsapp's classifyMessage labels
+// match one of the media types internal/whatsapp stores
 // ("image"/"video"/"audio"/"document"/"sticker").
 func newMediaSendCmd(kind string) *cobra.Command {
 	var caption, filename string

@@ -207,16 +207,6 @@ func textMessage(text string, ci *waProto.ContextInfo) *waProto.Message {
 	}}
 }
 
-// TextMessage builds a text message. When it @mentions anyone it's an
-// ExtendedTextMessage listing them in ContextInfo.MentionedJID; each must
-// appear in text as "@" followed by its JID's user part.
-func TextMessage(text string, mentioned []string) *waProto.Message {
-	if len(mentioned) == 0 {
-		return textMessage(text, nil)
-	}
-	return textMessage(text, &waProto.ContextInfo{MentionedJID: mentioned})
-}
-
 // outgoingRow builds the pending store row of a message about to be sent.
 func outgoingRow(chatJID, id string, msg *waProto.Message) msgstore.Message {
 	mediaType, text := analyze(unwrapMessage(msg)).storedFields()

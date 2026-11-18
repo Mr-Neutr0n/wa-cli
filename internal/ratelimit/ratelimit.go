@@ -26,17 +26,6 @@ type Config struct {
 	PerDay    int
 }
 
-// DefaultConfig returns conservative defaults suitable for personal use:
-// well within what a normal person messaging on WhatsApp would ever hit,
-// but low enough to stop a runaway script fast.
-func DefaultConfig() Config {
-	return Config{
-		PerMinute: 10,
-		PerHour:   100,
-		PerDay:    500,
-	}
-}
-
 // Limiter enforces Config against a persisted history of send timestamps.
 type Limiter struct {
 	path string

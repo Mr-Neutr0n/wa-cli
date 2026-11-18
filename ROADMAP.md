@@ -166,9 +166,8 @@ detailed history.
       `internal/tui` (Bubble Tea UI) are also still 0% — low value for
       unit tests (would either pop real OS notifications during `go
       test` or mostly test a UI framework, not wa-cli's own logic).
-      `internal/cli` (0%) is the pre-Cobra hand-rolled router noted as
-      dead code in `ARCHITECTURE.md` — candidate for deletion rather
-      than tests.
+      `internal/cli` (0%) was the pre-Cobra hand-rolled router; it has
+      since been deleted.
 - [x] **Phase 16 — Documentation**: site, examples, API docs, architecture
       diagrams. `README.md` rewritten to match actual capabilities
       (was still describing Phase 0/1 status), `ARCHITECTURE.md` added
@@ -367,7 +366,8 @@ detailed history.
 Phases 0/1 originally used a small hand-rolled command router
 (`internal/cli`) because the sandbox they were first built in couldn't
 reach `proxy.golang.org` / `gopkg.in`, which Cobra's dependency graph
-needs. That's since been swapped for real `github.com/spf13/cobra` — the
+needs. That's since been swapped for real `github.com/spf13/cobra` and the
+router deleted — the
 project now follows the standard `cobra-cli init` layout: `main.go` at the
 repo root imports `cmd`, and `cmd/` holds one file per command/group
 (`root.go`, `version.go`, `config.go`, `login.go`, `status.go`, `logout.go`,

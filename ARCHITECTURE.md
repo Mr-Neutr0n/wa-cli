@@ -352,13 +352,3 @@ extensions directory, and rejects path traversal in both `name` and
   from `Config.LogLevel`/`Config.JSONOutput`.
 - **`internal/version`** — build-time metadata (version/commit/date),
   overridden via `-ldflags` at build time; backs `wa version`.
-
-## Dead code
-
-**`internal/cli`** is a hand-rolled command router built early on,
-before Cobra's dependencies were reachable in the original build
-environment (see the note at the bottom of ROADMAP.md). Nothing imports
-it anymore — `cmd/` has used real `github.com/spf13/cobra` since. It's
-still sitting in the tree and is a reasonable candidate for deletion
-whenever someone's doing cleanup; noted here rather than silently
-removed, since it's not this document's place to make that call.
