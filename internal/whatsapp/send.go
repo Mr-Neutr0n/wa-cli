@@ -126,7 +126,7 @@ func (c *Client) chatTimer(chatJID string) int64 {
 func (c *Client) quoteParticipant(m msgstore.Message) string {
 	if m.FromMe || m.SenderJID == senderMe {
 		// Groups addressed by LID know you by your LID.
-		if isGroupJID(m.ChatJID) && c.groupUsesLID(m.ChatJID) {
+		if IsGroupJID(m.ChatJID) && c.groupUsesLID(m.ChatJID) {
 			if lid := c.ownLID(); !lid.IsEmpty() {
 				return lid.String()
 			}
@@ -144,7 +144,7 @@ func (c *Client) quoteParticipant(m msgstore.Message) string {
 func (c *Client) groupUsesLID(groupJID string) bool {
 	members, _ := c.cachedMembers(groupJID)
 	for _, m := range members {
-		if isLIDJID(m.JID) {
+		if IsLIDJID(m.JID) {
 			return true
 		}
 	}
@@ -239,7 +239,7 @@ func (c *Client) recordOutgoing(row msgstore.Message) {
 	}
 	err := c.chats.Upsert(chatstore.Chat{
 		JID:                row.ChatJID,
-		IsGroup:            isGroupJID(row.ChatJID),
+		IsGroup:            IsGroupJID(row.ChatJID),
 		LastMessageAt:      row.Timestamp,
 		LastMessagePreview: c.previewFor(context.Background(), row, analyze(contentOf(row))),
 	})
@@ -491,7 +491,7 @@ func (c *Client) Revoke(ctx context.Context, m msgstore.Message) error {
 	if err != nil {
 		return err
 	}
-	if !m.FromMe && !isGroupJID(m.ChatJID) {
+	if !m.FromMe && !IsGroupJID(m.ChatJID) {
 		return waerrors.New("only your own messages can be deleted for everyone")
 	}
 	if m.FromMe && (m.Status == msgstore.StatusFailed || m.Status == msgstore.StatusPending) {

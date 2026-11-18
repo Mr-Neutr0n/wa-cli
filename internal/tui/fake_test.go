@@ -63,7 +63,7 @@ func newFake() *fakeBackend {
 
 func chat(jid, title string, at int64) whatsapp.ChatView {
 	return whatsapp.ChatView{
-		Chat:  chatstore.Chat{JID: jid, Name: title, IsGroup: strings.HasSuffix(jid, "@g.us"), LastMessageAt: at},
+		Chat:  chatstore.Chat{JID: jid, Name: title, IsGroup: whatsapp.IsGroupJID(jid), LastMessageAt: at},
 		Title: title,
 	}
 }

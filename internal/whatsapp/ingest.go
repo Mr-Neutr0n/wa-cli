@@ -226,7 +226,7 @@ func (c *Client) announce(in incoming, res applied, pushName string) {
 	row := *res.Store
 	a := analyze(contentOf(row))
 	ctx := context.Background()
-	group := isGroupJID(row.ChatJID)
+	group := IsGroupJID(row.ChatJID)
 
 	var chat chatstore.Chat
 	if c.chats != nil {
@@ -290,7 +290,7 @@ func (c *Client) previewFor(ctx context.Context, m msgstore.Message, a analysis)
 		return c.ResolveName(ctx, jid)
 	})
 	text := a.previewText()
-	if isGroupJID(m.ChatJID) && a.Kind != KindSystem {
+	if IsGroupJID(m.ChatJID) && a.Kind != KindSystem {
 		who := "You"
 		if !m.FromMe {
 			who = c.ResolveName(ctx, m.SenderJID)
@@ -369,7 +369,7 @@ func (c *Client) maybeNotify(ctx context.Context, in incoming, row msgstore.Mess
 	if now.Sub(time.UnixMilli(row.Timestamp)) >= 2*time.Minute {
 		return
 	}
-	group := isGroupJID(row.ChatJID)
+	group := IsGroupJID(row.ChatJID)
 	if (group && !groups) || chatMuted(chat, now) {
 		return
 	}
@@ -742,7 +742,7 @@ func (c *Client) applyHistoryChats(ctx context.Context, chats map[string]*histor
 
 	// Chats stored under an @lid whose phone number this sync revealed.
 	for jid := range existing {
-		if !isLIDJID(jid) {
+		if !IsLIDJID(jid) {
 			continue
 		}
 		if lid, err := types.ParseJID(jid); err == nil {

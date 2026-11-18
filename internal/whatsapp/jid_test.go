@@ -214,3 +214,40 @@ func TestIngest_MergesOldLIDChatOnFirstMessage(t *testing.T) {
 		t.Errorf("expected a reload event after the merge, got %+v", tc.log.all())
 	}
 }
+
+func TestPhoneJID(t *testing.T) {
+	cases := []struct {
+		in, want string
+		ok       bool
+	}{
+		{"254700282181", "254700282181@s.whatsapp.net", true},
+		{"+254700282181", "254700282181@s.whatsapp.net", true},
+		{"", "", false},
+		{"+", "", false},
+		{"12a34", "", false},
+		{"12 34", "", false},
+		{"++254700282181", "", false},
+		{"254700282181@s.whatsapp.net", "", false},
+	}
+	for _, tc := range cases {
+		if got, ok := PhoneJID(tc.in); got != tc.want || ok != tc.ok {
+			t.Errorf("PhoneJID(%q) = %q, %v; want %q, %v", tc.in, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestJIDKinds(t *testing.T) {
+	for _, tc := range []struct {
+		jid                 string
+		group, lid, phoneID bool
+	}{
+		{"120363000000000001@g.us", true, false, false},
+		{"177403959709918@lid", false, true, false},
+		{"919541988522@s.whatsapp.net", false, false, true},
+		{"status@broadcast", false, false, false},
+	} {
+		if IsGroupJID(tc.jid) != tc.group || IsLIDJID(tc.jid) != tc.lid || IsPhoneJID(tc.jid) != tc.phoneID {
+			t.Errorf("%s: group=%v lid=%v phone=%v", tc.jid, IsGroupJID(tc.jid), IsLIDJID(tc.jid), IsPhoneJID(tc.jid))
+		}
+	}
+}

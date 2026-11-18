@@ -92,7 +92,7 @@ func (m *model) refilter() {
 	if q != "" {
 		added := 0
 		for _, ct := range m.contacts {
-			if _, has := m.chatIdx[ct.JID]; has || ct.Name == "" || !strings.HasSuffix(ct.JID, "@s.whatsapp.net") {
+			if _, has := m.chatIdx[ct.JID]; has || ct.Name == "" || !whatsapp.IsPhoneJID(ct.JID) {
 				continue
 			}
 			lower := strings.ToLower(ct.Name)

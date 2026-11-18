@@ -365,26 +365,6 @@ func withAppDataDir(t *testing.T) string {
 	return dir
 }
 
-// ---- isAllDigits ----
-
-func TestIsAllDigits(t *testing.T) {
-	cases := []struct {
-		in   string
-		want bool
-	}{
-		{"254700282181", true},
-		{"", true}, // vacuously true: no non-digit characters found
-		{"12a34", false},
-		{"+254700282181", false},
-		{"12 34", false},
-	}
-	for _, tc := range cases {
-		if got := isAllDigits(tc.in); got != tc.want {
-			t.Errorf("isAllDigits(%q) = %v, want %v", tc.in, got, tc.want)
-		}
-	}
-}
-
 // ---- resolveJID ----
 
 func TestResolveJID_LiteralJID(t *testing.T) {

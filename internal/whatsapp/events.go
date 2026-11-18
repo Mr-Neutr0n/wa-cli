@@ -211,7 +211,7 @@ func (c *Client) handleReceipt(evt *events.Receipt) {
 	if evt.IsFromMe || c.msgs == nil {
 		return
 	}
-	status, ok := receiptStatus(evt.Type, evt.IsGroup || isGroupJID(chat))
+	status, ok := receiptStatus(evt.Type, evt.IsGroup || IsGroupJID(chat))
 	if !ok {
 		return
 	}

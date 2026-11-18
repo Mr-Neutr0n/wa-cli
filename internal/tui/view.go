@@ -130,7 +130,7 @@ func (m *model) typingText(chatJID string) string {
 	switch {
 	case len(names) == 0:
 		return ""
-	case !strings.HasSuffix(chatJID, "@g.us"):
+	case !whatsapp.IsGroupJID(chatJID):
 		return what
 	case len(names) == 1:
 		return names[0] + " is " + what

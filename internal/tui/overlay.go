@@ -586,7 +586,7 @@ func (m *model) openInfo() tea.Cmd {
 		}
 	}
 	o.items = append(o.items, overlayItem{label: "Number", detail: "+" + user})
-	if strings.HasSuffix(m.openJID, "@lid") {
+	if whatsapp.IsLIDJID(m.openJID) {
 		o.items[0] = overlayItem{label: "ID", detail: m.openJID}
 	}
 	if sub := m.subtitle(); sub != "" {

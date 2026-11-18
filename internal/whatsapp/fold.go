@@ -304,11 +304,11 @@ func (c *Client) target(chatJID, id string) (msgstore.Message, bool) {
 	if m, ok, err := c.msgs.Get(chatJID, id); err == nil && ok {
 		return m, true
 	}
-	if isGroupJID(chatJID) {
+	if IsGroupJID(chatJID) {
 		return msgstore.Message{}, false
 	}
 	m, ok, err := c.msgs.Find(id)
-	if err != nil || !ok || isGroupJID(m.ChatJID) {
+	if err != nil || !ok || IsGroupJID(m.ChatJID) {
 		return msgstore.Message{}, false
 	}
 	if c.canonicalChatString(m.ChatJID) != c.canonicalChatString(chatJID) {
@@ -406,7 +406,7 @@ func (c *Client) revoke(in incoming, targetID string, res *applied, mayDefer boo
 		return
 	}
 	if !c.sameSender(in, t) {
-		if !isGroupJID(t.ChatJID) {
+		if !IsGroupJID(t.ChatJID) {
 			return
 		}
 		switch c.adminOf(t.ChatJID, in) {

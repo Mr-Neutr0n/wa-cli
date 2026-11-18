@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 // suggestions is the dropdown above the message box. It offers group
@@ -81,7 +83,7 @@ func (s *suggestions) update(m *model) tea.Cmd {
 		return nil
 	}
 
-	if q, start, ok := mentionQuery(value, pos); ok && strings.HasSuffix(m.openJID, "@g.us") {
+	if q, start, ok := mentionQuery(value, pos); ok && whatsapp.IsGroupJID(m.openJID) {
 		rest := string([]rune(value)[start:])
 		for _, p := range s.picked {
 			if strings.HasPrefix(rest, "@"+p.name) {

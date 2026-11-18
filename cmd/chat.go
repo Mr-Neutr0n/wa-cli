@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -240,9 +239,8 @@ func resolveChat(target string) (chatstore.Chat, error) {
 		return results[0], nil
 	}
 
-	digits := strings.TrimPrefix(target, "+")
-	if digits != "" && isAllDigits(digits) {
-		return chatstore.Chat{JID: digits + "@s.whatsapp.net"}, nil
+	if jid, ok := whatsapp.PhoneJID(target); ok {
+		return chatstore.Chat{JID: jid}, nil
 	}
 
 	return chatstore.Chat{}, fmt.Errorf("no chat found matching %q — try 'wa chat list' first to sync", target)

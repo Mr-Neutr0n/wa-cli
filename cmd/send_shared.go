@@ -15,6 +15,7 @@ import (
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
 	"github.com/codebyoketch/wa-cli/internal/ratelimit"
 	"github.com/codebyoketch/wa-cli/internal/safety"
+	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 // completeChatNames returns chat names from the local chatstore cache
@@ -55,24 +56,14 @@ func resolveJID(target string) (types.JID, error) {
 		return types.ParseJID(chat.JID)
 	}
 
-	digits := strings.TrimPrefix(target, "+")
-	if digits != "" && isAllDigits(digits) {
-		if jid, err := types.ParseJID(digits + "@s.whatsapp.net"); err == nil {
+	if phone, ok := whatsapp.PhoneJID(target); ok {
+		if jid, err := types.ParseJID(phone); err == nil {
 			return jid, nil
 		}
 	}
 
 	return types.JID{}, fmt.Errorf(
 		"no chat found matching %q, and it doesn't look like a phone number or JID — try 'wa chat list' first, or pass a full JID like 254700282181@s.whatsapp.net", target)
-}
-
-func isAllDigits(s string) bool {
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 // resolveMessageRef looks up a message by its position in 'wa chat open's

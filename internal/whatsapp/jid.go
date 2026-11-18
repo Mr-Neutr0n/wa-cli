@@ -173,14 +173,31 @@ func (c *Client) sameUser(a, b string) bool {
 // senderMe is how the message store records you as a sender.
 const senderMe = "me"
 
-// isGroupJID reports whether jid is a group chat.
-func isGroupJID(jid string) bool {
+// IsGroupJID reports whether jid is a group chat.
+func IsGroupJID(jid string) bool {
 	return strings.HasSuffix(jid, "@"+types.GroupServer)
 }
 
-// isLIDJID reports whether jid is an @lid user.
-func isLIDJID(jid string) bool {
+// IsLIDJID reports whether jid is a person's privacy ID ("...@lid").
+func IsLIDJID(jid string) bool {
 	return strings.HasSuffix(jid, "@"+types.HiddenUserServer)
+}
+
+// IsPhoneJID reports whether jid is a person's phone-number ID
+// ("...@s.whatsapp.net").
+func IsPhoneJID(jid string) bool {
+	return strings.HasSuffix(jid, "@"+types.DefaultUserServer)
+}
+
+// PhoneJID turns a phone number as a user types it, digits with an
+// optional leading "+", into that person's JID. ok is false for anything
+// else.
+func PhoneJID(number string) (jid string, ok bool) {
+	digits := strings.TrimPrefix(number, "+")
+	if digits == "" || strings.Trim(digits, "0123456789") != "" {
+		return "", false
+	}
+	return types.NewJID(digits, types.DefaultUserServer).String(), true
 }
 
 // mergeLIDChat folds a chat stored under lid into the chat stored under
@@ -221,7 +238,7 @@ func (c *Client) mergeLIDChats() (merged int) {
 		return 0
 	}
 	for _, ch := range list {
-		if !isLIDJID(ch.JID) {
+		if !IsLIDJID(ch.JID) {
 			continue
 		}
 		lid, err := types.ParseJID(ch.JID)

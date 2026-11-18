@@ -43,7 +43,7 @@ func newDemoBackend() *demoBackend {
 	now := time.Now()
 	add := func(jid, title string, pinned bool) {
 		d.chats[jid] = &whatsapp.ChatView{
-			Chat:  chatstore.Chat{JID: jid, Name: title, IsGroup: strings.HasSuffix(jid, "@g.us"), Pinned: pinned},
+			Chat:  chatstore.Chat{JID: jid, Name: title, IsGroup: whatsapp.IsGroupJID(jid), Pinned: pinned},
 			Title: title,
 		}
 	}
@@ -321,7 +321,7 @@ func (d *demoBackend) SetOnline(context.Context, bool) error           { return 
 func (d *demoBackend) SetTyping(context.Context, string, bool) error   { return nil }
 
 func (d *demoBackend) WatchPresence(_ context.Context, jid string) error {
-	if strings.HasSuffix(jid, "@s.whatsapp.net") {
+	if whatsapp.IsPhoneJID(jid) {
 		d.emit(whatsapp.PresenceEvent{JID: jid, Online: jid == "111@s.whatsapp.net", LastSeen: time.Now().Add(-40 * time.Minute).UnixMilli()})
 	}
 	return nil
