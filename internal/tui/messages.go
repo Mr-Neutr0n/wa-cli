@@ -393,7 +393,7 @@ func (m *model) rebuildLines() {
 func (m *model) renderBlock(v *whatsapp.MessageView, showSender bool, w int) []string {
 	if v.Kind == whatsapp.KindSystem {
 		var out []string
-		for _, line := range strings.Split(ansi.Wrap(sanitize(v.Body), w-4, ""), "\n") {
+		for _, line := range strings.Split(ansi.Wrap(whatsapp.Sanitize(v.Body), w-4, ""), "\n") {
 			out = append(out, systemStyle.Render(center(line, w)))
 		}
 		return out
@@ -433,7 +433,7 @@ func (m *model) renderBlock(v *whatsapp.MessageView, showSender bool, w int) []s
 		out = append(out, pollLines(v.Poll, bw)...)
 	}
 
-	if body := strings.TrimRight(sanitize(v.Body), "\n "); body != "" && !v.Deleted && v.Poll == nil {
+	if body := strings.TrimRight(whatsapp.Sanitize(v.Body), "\n "); body != "" && !v.Deleted && v.Poll == nil {
 		for _, line := range strings.Split(ansi.Wrap(body, bw, ""), "\n") {
 			out = append(out, base.Render(line))
 		}

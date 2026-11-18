@@ -103,8 +103,8 @@ func TestEditorReplaceAndKill(t *testing.T) {
 }
 
 func TestSanitizeAndHelpers(t *testing.T) {
-	if got := sanitize("a\x1b[31mb\x07c\td\ne"); got != "a[31mbc d\ne" {
-		t.Fatalf("sanitize = %q", got)
+	if got := oneLine("a\x1b[31mb\x07c\td\x9be"); got != "a[31mbc d\ufffde" {
+		t.Fatalf("oneLine = %q", got)
 	}
 	if got := oneLine("a\n\n  b\tc"); got != "a b c" {
 		t.Fatalf("oneLine = %q", got)

@@ -9,43 +9,15 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
-// sanitize makes text from outside safe to draw: control characters
-// (including ESC, which could otherwise smuggle terminal commands into a
-// chat message) are dropped, tabs become spaces, and line breaks are kept.
-func sanitize(s string) string {
-	clean := true
-	for _, r := range s {
-		if r != '\n' && (unicode.IsControl(r) || r == ' ' || r == ' ') {
-			clean = false
-			break
-		}
-	}
-	if clean {
-		return s
-	}
-	return strings.Map(func(r rune) rune {
-		switch {
-		case r == '\n':
-			return r
-		case r == '\t':
-			return ' '
-		case r == ' ' || r == ' ':
-			return '\n'
-		case unicode.IsControl(r):
-			return -1
-		}
-		return r
-	}, s)
-}
-
-// oneLine is sanitize with line breaks turned into spaces.
+// oneLine is whatsapp.Sanitize with line breaks turned into spaces.
 func oneLine(s string) string {
-	s = sanitize(s)
+	s = whatsapp.Sanitize(s)
 	if strings.ContainsRune(s, '\n') {
 		s = strings.Join(strings.Fields(strings.ReplaceAll(s, "\n", " ")), " ")
 	}
