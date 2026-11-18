@@ -234,6 +234,26 @@ func text(s string) *waProto.Message {
 	return &waProto.Message{Conversation: proto.String(s)}
 }
 
+var liveClock struct {
+	mu   sync.Mutex
+	last time.Time
+}
+
+// liveNow is time.Now, but at least a millisecond after its previous
+// result. Stores keep millisecond timestamps and only move a chat's
+// preview forward on a strictly later one, so two events built in the
+// same millisecond would otherwise look simultaneous.
+func liveNow() time.Time {
+	liveClock.mu.Lock()
+	defer liveClock.mu.Unlock()
+	now := time.Now().Truncate(time.Millisecond)
+	if !now.After(liveClock.last) {
+		now = liveClock.last.Add(time.Millisecond)
+	}
+	liveClock.last = now
+	return now
+}
+
 // liveEvent builds a message event as whatsmeow would deliver it. sender
 // is ignored for fromMe (it becomes your own JID).
 func liveEvent(chat, sender types.JID, id string, msg *waProto.Message, fromMe bool) *events.Message {
@@ -249,7 +269,7 @@ func liveEvent(chat, sender types.JID, id string, msg *waProto.Message, fromMe b
 				IsGroup:  chat.Server == types.GroupServer,
 			},
 			ID:        id,
-			Timestamp: time.Now(),
+			Timestamp: liveNow(),
 		},
 		Message: msg,
 	}
