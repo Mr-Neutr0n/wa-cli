@@ -1,0 +1,10 @@
+# Build output
+/bin/
+/dist/
+/wa
+/wa.exe
+/wa-cli
+/wa-cli.exe
+
+# Test output
+coverage.out
