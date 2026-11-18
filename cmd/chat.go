@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -101,22 +103,11 @@ var chatOpenCmd = &cobra.Command{
 		if err := cs.MarkRead(chat.JID); err != nil {
 			a.Log.Warn("failed to mark chat read", "error", err)
 		}
-		fmt.Printf("%s (%s)\n\n", whatsapp.Sanitize(chat.Name), chat.JID)
 
 		ms := msgstore.New(a.Config.DataDir)
 		msgs, err := ms.List(chat.JID)
 		if err != nil {
 			return err
-		}
-		if useJSON(cmd) {
-			return printJSON(cmd, struct {
-				Chat     chatstore.Chat     `json:"chat"`
-				Messages []msgstore.Message `json:"messages"`
-			}{chat, msgs})
-		}
-		if len(msgs) == 0 {
-			fmt.Println("No local message history yet. Run 'wa watch' for a while, or send/receive a message, to build it up.")
-			return nil
 		}
 		// Local store only (no connection): resolves sender names and
 		// mentions, and renders/hides non-text message types.
@@ -125,26 +116,100 @@ var chatOpenCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		for i, m := range msgs {
-			// Hidden messages keep their slot, so [n] still matches what
-			// 'wa chat reply' and 'wa chat forward' look up.
-			text, hidden := client.DisplayText(ctx, m)
-			if hidden {
-				continue
-			}
-			who := "them"
-			switch {
-			case m.FromMe:
-				who = "you"
-			case chat.IsGroup:
-				who = client.ResolveName(ctx, m.SenderJID)
-			}
-			ts := clockTime(m.Timestamp)
-			fmt.Printf("[%d] (%s) %s: %s\n", i+1, ts, whatsapp.Sanitize(who), whatsapp.Sanitize(text))
+		if useJSON(cmd) {
+			return printJSON(cmd, struct {
+				Chat     chatstore.Chat  `json:"chat"`
+				Messages []openedMessage `json:"messages"`
+			}{chat, openedMessages(ctx, client, msgs)})
 		}
-		fmt.Println("\nUse the [n] number with 'wa chat reply' or 'wa chat forward' to reference a message.")
+		printOpenedChat(ctx, cmd.OutOrStdout(), client, chat, msgs)
 		return nil
 	},
+}
+
+// printOpenedChat is 'wa chat open' as text: the numbered history, each
+// message followed by its reactions.
+func printOpenedChat(ctx context.Context, w io.Writer, client *whatsapp.Client, chat chatstore.Chat, msgs []msgstore.Message) {
+	fmt.Fprintf(w, "%s (%s)\n\n", whatsapp.Sanitize(chat.Name), chat.JID)
+	if len(msgs) == 0 {
+		fmt.Fprintln(w, "No local message history yet. Run 'wa watch' for a while, or send/receive a message, to build it up.")
+		return
+	}
+	for i, m := range msgs {
+		// Hidden messages keep their slot, so [n] still matches what
+		// 'wa chat reply', 'wa chat forward' and 'wa chat react' look up.
+		text, hidden := client.DisplayText(ctx, m)
+		if hidden {
+			continue
+		}
+		who := "them"
+		switch {
+		case m.FromMe:
+			who = "you"
+		case chat.IsGroup:
+			who = client.ResolveName(ctx, m.SenderJID)
+		}
+		ts := clockTime(m.Timestamp)
+		fmt.Fprintf(w, "[%d] (%s) %s: %s\n", i+1, ts, whatsapp.Sanitize(who), whatsapp.Sanitize(text))
+		if v, ok := client.MessageView(ctx, m); ok && len(v.Reactions) > 0 {
+			fmt.Fprintln(w, reactionLine(v.Reactions))
+		}
+	}
+	fmt.Fprintln(w, "\nUse the [n] number with 'wa chat reply', 'wa chat forward' or 'wa chat react' to reference a message.")
+}
+
+// reactionLine is the indented line under a message with reactions:
+// each emoji with its count and who reacted, "You" for yourself, e.g.
+// "    👍 2 (You, Asha)  ❤️ 1 (Bilal)".
+func reactionLine(reactions []whatsapp.ReactionView) string {
+	parts := make([]string, 0, len(reactions))
+	for _, r := range reactions {
+		names := make([]string, len(r.Names))
+		for i, name := range r.Names {
+			names[i] = singleLine(name)
+		}
+		parts = append(parts, fmt.Sprintf("%s %d (%s)", singleLine(r.Emoji), r.Count, strings.Join(names, ", ")))
+	}
+	return "    " + strings.Join(parts, "  ")
+}
+
+// singleLine is whatsapp.Sanitize for a string that must stay on one line.
+func singleLine(s string) string {
+	return strings.Join(strings.Fields(whatsapp.Sanitize(s)), " ")
+}
+
+// openedMessage is a message as 'wa chat open --json' prints it: the
+// stored message, plus its reactions tallied per emoji.
+type openedMessage struct {
+	msgstore.Message
+	ReactionSummary []reactionSummary `json:"reactionSummary,omitempty"`
+}
+
+// reactionSummary is one emoji's reactions on a message.
+type reactionSummary struct {
+	Emoji string   `json:"emoji"`
+	Count int      `json:"count"`
+	Mine  bool     `json:"mine"`
+	Names []string `json:"names"` // "You" for yourself
+}
+
+func openedMessages(ctx context.Context, client *whatsapp.Client, msgs []msgstore.Message) []openedMessage {
+	if msgs == nil {
+		return nil
+	}
+	out := make([]openedMessage, len(msgs))
+	for i, m := range msgs {
+		out[i].Message = m
+		v, ok := client.MessageView(ctx, m)
+		if !ok {
+			continue
+		}
+		for _, r := range v.Reactions {
+			out[i].ReactionSummary = append(out[i].ReactionSummary,
+				reactionSummary{Emoji: r.Emoji, Count: r.Count, Mine: r.Mine, Names: r.Names})
+		}
+	}
+	return out
 }
 
 var chatMuteCmd = &cobra.Command{
