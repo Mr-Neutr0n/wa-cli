@@ -4,7 +4,9 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -26,6 +28,9 @@ func Open(ctx context.Context, dataDir string, log waLog.Logger) (*sqlstore.Cont
 	}
 
 	dbPath := filepath.Join(dataDir, DBFileName)
+	if err := makePrivate(dbPath); err != nil {
+		return nil, fmt.Errorf("securing session store: %w", err)
+	}
 	// WAL (write-ahead logging) allows concurrent readers alongside a
 	// single writer, unlike SQLite's default rollback journal mode —
 	// important here because whatsmeow's initial sync does history-sync
@@ -40,4 +45,22 @@ func Open(ctx context.Context, dataDir string, log waLog.Logger) (*sqlstore.Cont
 		return nil, fmt.Errorf("opening session store: %w", err)
 	}
 	return container, nil
+}
+
+// makePrivate creates the database file at path if needed and makes it,
+// and any -wal and -shm files beside it, readable by the user only.
+// SQLite would create the file readable by everyone, and gives its
+// helper files the same permissions as the database.
+func makePrivate(path string) error {
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+	f.Close()
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		if err := os.Chmod(p, 0o600); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
