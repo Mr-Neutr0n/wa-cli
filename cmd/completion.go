@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -137,4 +138,27 @@ PowerShell profile (see 'Get-Help about_Profiles' for its location).`,
 func init() {
 	completionCmd.AddCommand(completionBashCmd, completionZshCmd, completionFishCmd, completionPowerShellCmd)
 	rootCmd.AddCommand(completionCmd)
+}
+
+// completeFirstArg completes a command's first argument with names(what
+// has been typed so far) and offers nothing after it.
+func completeFirstArg(names func(toComplete string) []string) cobra.CompletionFunc {
+	return func(_ *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return names(toComplete), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// withPrefix returns the candidates that start with prefix, ignoring case.
+func withPrefix(candidates []string, prefix string) []string {
+	q := strings.ToLower(prefix)
+	var out []string
+	for _, c := range candidates {
+		if strings.HasPrefix(strings.ToLower(c), q) {
+			out = append(out, c)
+		}
+	}
+	return out
 }

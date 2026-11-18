@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/codebyoketch/wa-cli/internal/config"
 	waerrors "github.com/codebyoketch/wa-cli/internal/errors"
-	"github.com/spf13/cobra"
 )
 
 var configCmd = &cobra.Command{
@@ -183,14 +184,11 @@ func findConfigField(name string) (configField, bool) {
 // only the in-memory configFields table — no disk or network access —
 // so it's safe on every Tab press.
 func completeConfigKeys(toComplete string) []string {
-	q := strings.ToLower(toComplete)
 	var names []string
 	for _, f := range configFields {
-		if strings.HasPrefix(strings.ToLower(f.name), q) {
-			names = append(names, f.name)
-		}
+		names = append(names, f.name)
 	}
-	return names
+	return withPrefix(names, toComplete)
 }
 
 var configGetCmd = &cobra.Command{
@@ -200,13 +198,8 @@ var configGetCmd = &cobra.Command{
 
 With no arguments, prints every key. With one argument, prints just that
 key's value (handy for scripting, e.g. 'wa config get dataDir').`,
-	Args: cobra.MaximumNArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeConfigKeys(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: completeFirstArg(completeConfigKeys),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 
@@ -268,13 +261,8 @@ Examples:
   wa config set notifyGroups false
   wa config set logLevel debug
   wa config set maxMessagesPerHour 200`,
-	Args: cobra.ExactArgs(2),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeConfigKeys(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Args:              cobra.ExactArgs(2),
+	ValidArgsFunction: completeFirstArg(completeConfigKeys),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, val := args[0], args[1]
 

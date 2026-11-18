@@ -62,15 +62,10 @@ var chatSearchCmd = &cobra.Command{
 }
 
 var chatInfoCmd = &cobra.Command{
-	Use:   "info <jid-or-name>",
-	Short: "Show details for one chat",
-	Args:  cobra.ExactArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeChatNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "info <jid-or-name>",
+	Short:             "Show details for one chat",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeFirstArg(completeChatNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		chat, err := resolveChat(args[0])
 		if err != nil {
@@ -94,15 +89,10 @@ var chatInfoCmd = &cobra.Command{
 }
 
 var chatOpenCmd = &cobra.Command{
-	Use:   "open <jid-or-name>",
-	Short: "Open a chat and show recent message history",
-	Args:  cobra.ExactArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeChatNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "open <jid-or-name>",
+	Short:             "Open a chat and show recent message history",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeFirstArg(completeChatNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		chat, err := resolveChat(args[0])
 		if err != nil {
@@ -164,13 +154,8 @@ var chatMuteCmd = &cobra.Command{
 	Long: `Suppress desktop notifications for one chat, in wa watch and the TUI.
 Unrelated to unread counts or wa chat list — a muted chat still shows up
 normally, it just won't pop a desktop notification.`,
-	Args: cobra.ExactArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeChatNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeFirstArg(completeChatNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		chat, err := resolveChat(args[0])
 		if err != nil {
@@ -186,15 +171,10 @@ normally, it just won't pop a desktop notification.`,
 }
 
 var chatUnmuteCmd = &cobra.Command{
-	Use:   "unmute <chat>",
-	Short: "Re-enable desktop notifications for one chat",
-	Args:  cobra.ExactArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeChatNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "unmute <chat>",
+	Short:             "Re-enable desktop notifications for one chat",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeFirstArg(completeChatNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		chat, err := resolveChat(args[0])
 		if err != nil {

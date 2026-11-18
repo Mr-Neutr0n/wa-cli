@@ -56,33 +56,10 @@ var contactSearchCmd = &cobra.Command{
 }
 
 var contactInfoCmd = &cobra.Command{
-	Use:   "info <name-or-jid>",
-	Short: "Show details for one contact",
-	Args:  cobra.ExactArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		contacts, err := loadContacts()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		q := strings.ToLower(toComplete)
-		var names []string
-		for _, c := range contacts {
-			name := c.Name
-			if name == "" {
-				name = c.PushName
-			}
-			if name == "" {
-				continue
-			}
-			if strings.HasPrefix(strings.ToLower(name), q) {
-				names = append(names, name)
-			}
-		}
-		return names, cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "info <name-or-jid>",
+	Short:             "Show details for one contact",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeFirstArg(completeContactNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		contacts, err := loadContacts()
 		if err != nil {
@@ -113,6 +90,26 @@ var contactInfoCmd = &cobra.Command{
 func init() {
 	contactCmd.AddCommand(contactListCmd, contactSearchCmd, contactInfoCmd)
 	rootCmd.AddCommand(contactCmd)
+}
+
+// completeContactNames returns the names (or, failing that, push names)
+// of contacts starting with toComplete.
+func completeContactNames(toComplete string) []string {
+	contacts, err := loadContacts()
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, c := range contacts {
+		name := c.Name
+		if name == "" {
+			name = c.PushName
+		}
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return withPrefix(names, toComplete)
 }
 
 func loadContacts() ([]whatsapp.Contact, error) {

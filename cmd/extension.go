@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -27,14 +26,11 @@ Installed extensions run as ordinary subprocesses via 'wa extension run'.`,
 // directory — no network access — so it's safe on every Tab press.
 func completeExtensionNames(toComplete string) []string {
 	exts, _ := extension.List()
-	q := strings.ToLower(toComplete)
 	var names []string
 	for _, e := range exts {
-		if strings.HasPrefix(strings.ToLower(e.Name), q) {
-			names = append(names, e.Name)
-		}
+		names = append(names, e.Name)
 	}
-	return names
+	return withPrefix(names, toComplete)
 }
 
 var extensionInstallCmd = &cobra.Command{
@@ -105,16 +101,11 @@ var extensionListCmd = &cobra.Command{
 }
 
 var extensionRemoveCmd = &cobra.Command{
-	Use:     "remove <name>",
-	Aliases: []string{"rm", "uninstall"},
-	Short:   "Remove an installed extension",
-	Args:    cobra.ExactArgs(1),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeExtensionNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Use:               "remove <name>",
+	Aliases:           []string{"rm", "uninstall"},
+	Short:             "Remove an installed extension",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeFirstArg(completeExtensionNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := extension.Remove(args[0]); err != nil {
 			return err
@@ -134,12 +125,7 @@ Example:
   wa extension run wa-hello -- --loud`,
 	Args:               cobra.MinimumNArgs(1),
 	DisableFlagParsing: true, // everything after <name> belongs to the extension, not wa-cli
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeExtensionNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	ValidArgsFunction:  completeFirstArg(completeExtensionNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		extArgs := args[1:]

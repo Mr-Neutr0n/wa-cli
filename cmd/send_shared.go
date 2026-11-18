@@ -30,17 +30,13 @@ func completeChatNames(toComplete string) []string {
 		return nil
 	}
 
-	q := strings.ToLower(toComplete)
 	var names []string
 	for _, c := range chats {
-		if c.Name == "" {
-			continue
-		}
-		if strings.HasPrefix(strings.ToLower(c.Name), q) {
+		if c.Name != "" {
 			names = append(names, c.Name)
 		}
 	}
-	return names
+	return withPrefix(names, toComplete)
 }
 
 // resolveJID accepts a literal WhatsApp JID (containing "@"), a chat

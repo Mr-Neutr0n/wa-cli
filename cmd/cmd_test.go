@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/codebyoketch/wa-cli/internal/app"
 	"github.com/codebyoketch/wa-cli/internal/chatstore"
 	"github.com/codebyoketch/wa-cli/internal/config"
@@ -325,6 +327,19 @@ func TestCompleteConfigKeys_NoMatch(t *testing.T) {
 	got := completeConfigKeys("zzz_nonexistent")
 	if len(got) != 0 {
 		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
+func TestCompleteFirstArg_OnlyCompletesTheFirstArgument(t *testing.T) {
+	complete := completeFirstArg(func(prefix string) []string {
+		return withPrefix([]string{"Alice", "alan", "Bob"}, prefix)
+	})
+	got, dir := complete(nil, nil, "al")
+	if len(got) != 2 || got[0] != "Alice" || got[1] != "alan" || dir != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("first argument: got %v, %v", got, dir)
+	}
+	if got, dir := complete(nil, []string{"Alice"}, "al"); got != nil || dir != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("second argument: got %v, %v; want nothing and no file completion", got, dir)
 	}
 }
 

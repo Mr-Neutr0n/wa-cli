@@ -16,13 +16,8 @@ var chatReplyCmd = &cobra.Command{
 	Long: `Reply to a specific message in a chat. <message-ref> is the number
 shown next to a message in 'wa chat open <recipient>' (e.g. "3"), or a raw
 WhatsApp message ID if you already have one.`,
-	Args: cobra.MinimumNArgs(3),
-	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		return completeChatNames(toComplete), cobra.ShellCompDirectiveNoFileComp
-	},
+	Args:              cobra.MinimumNArgs(3),
+	ValidArgsFunction: completeFirstArg(completeChatNames),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		target := args[0]
