@@ -18,6 +18,18 @@ type chatItem struct {
 	contact bool   // an address-book entry with no chat yet
 }
 
+// unread reports whether the chat counts as unread: it has unread
+// messages or was marked unread by hand.
+func (c chatItem) unread() bool { return c.UnreadCount > 0 || c.MarkedUnread }
+
+// chat returns the list entry for jid, or nil when it isn't listed.
+func (m *model) chat(jid string) *chatItem {
+	if i, ok := m.chatIdx[jid]; ok {
+		return &m.chats[i]
+	}
+	return nil
+}
+
 func newChatItem(c whatsapp.ChatView) chatItem {
 	c.Title = oneLine(c.Title)
 	if c.Title == "" {
@@ -51,8 +63,8 @@ func (m *model) sortChats() {
 	for i, c := range m.chats {
 		m.chatIdx[c.JID] = i
 	}
-	if i, ok := m.chatIdx[m.openJID]; ok {
-		m.open = m.chats[i]
+	if c := m.chat(m.openJID); c != nil {
+		m.open = *c
 	}
 	m.refilter()
 }
@@ -221,8 +233,8 @@ func (m *model) stashDraft() tea.Cmd {
 		return nil
 	}
 	m.drafts[m.openJID] = text
-	if i, ok := m.chatIdx[m.openJID]; ok {
-		m.chats[i].Draft = text
+	if c := m.chat(m.openJID); c != nil {
+		c.Draft = text
 		m.refilter()
 	}
 	return saveDraftCmd(m.be, m.openJID, text)
@@ -296,7 +308,6 @@ func (m *model) renderSidebar(l layout) string {
 // message and the unread count.
 func (m *model) chatRow(c chatItem, w int, now time.Time) (string, string) {
 	selected := c.JID == m.selectedJID
-	unread := c.UnreadCount > 0 || c.MarkedUnread
 
 	name := c.Title
 	if c.Pinned {
@@ -339,7 +350,7 @@ func (m *model) chatRow(c chatItem, w int, now time.Time) (string, string) {
 	}
 
 	nameStyle := chatNameStyle
-	if unread {
+	if c.unread() {
 		nameStyle = unreadNameStyle
 	}
 	whenW := ansi.StringWidth(when)

@@ -504,13 +504,11 @@ func (m *model) openSearch(scope string) tea.Cmd {
 func (m *model) jumpTo(chatJID, id string) tea.Cmd {
 	var cmds []tea.Cmd
 	if chatJID != m.openJID {
-		item, ok := chatItem{}, false
-		if i, has := m.chatIdx[chatJID]; has {
-			item, ok = m.chats[i], true
-		}
-		if !ok {
+		c := m.chat(chatJID)
+		if c == nil {
 			return m.info("That chat is no longer in the list.")
 		}
+		item := *c
 		m.selectedJID = chatJID
 		if m.filter != "" {
 			m.filter = ""

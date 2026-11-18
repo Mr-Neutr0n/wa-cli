@@ -379,7 +379,7 @@ func (m *model) fail(err error) tea.Cmd   { return m.setStatus(err.Error(), true
 func (m *model) titleCmd() tea.Cmd {
 	unread := 0
 	for _, c := range m.chats {
-		if (c.UnreadCount > 0 || c.MarkedUnread) && !c.Archived {
+		if c.unread() && !c.Archived {
 			unread++
 		}
 	}
@@ -440,7 +440,7 @@ func (m *model) markReadIfWatching() tea.Cmd {
 	if m.openJID == "" || m.focus == focusChatList || !m.focused || m.scrollBack > 0 || m.viewer != nil {
 		return nil
 	}
-	if i, ok := m.chatIdx[m.openJID]; ok && m.chats[i].UnreadCount == 0 && !m.chats[i].MarkedUnread {
+	if c := m.chat(m.openJID); c != nil && !c.unread() {
 		return nil
 	}
 	return markReadCmd(m.ctx, m.be, m.openJID)

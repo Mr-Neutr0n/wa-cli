@@ -97,8 +97,8 @@ func (m *model) pageLoaded(msg pageLoadedMsg) tea.Cmd {
 // oldest of the chat's UnreadCount newest incoming messages.
 func (m *model) firstUnread() string {
 	n := m.open.UnreadCount
-	if i, ok := m.chatIdx[m.openJID]; ok {
-		n = m.chats[i].UnreadCount
+	if c := m.chat(m.openJID); c != nil {
+		n = c.UnreadCount
 	}
 	id := ""
 	for i := len(m.msgs) - 1; i >= 0 && n > 0; i-- {

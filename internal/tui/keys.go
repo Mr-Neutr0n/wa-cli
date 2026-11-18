@@ -176,7 +176,7 @@ func (m *model) chatAction(what string) tea.Cmd {
 	case "mute":
 		return do(func() error { return be.SetMuted(ctx, jid, !(c.Muted || c.MutedUntil != 0)) })
 	case "unread":
-		if c.UnreadCount > 0 || c.MarkedUnread {
+		if c.unread() {
 			return do(func() error { return be.MarkChatRead(ctx, jid) })
 		}
 		return do(func() error { return be.MarkChatUnread(ctx, jid) })
