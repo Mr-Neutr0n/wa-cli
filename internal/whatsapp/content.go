@@ -600,9 +600,14 @@ func callLogText(m *waProto.CallLogMessage) string {
 	}
 	text := strings.ToUpper(what[:1]) + what[1:]
 	if secs := m.GetDurationSecs(); secs > 0 {
-		text += fmt.Sprintf(" (%d:%02d)", secs/60, secs%60)
+		text += " (" + minSec(int(secs)) + ")"
 	}
 	return text
+}
+
+// minSec formats a duration in seconds as minutes and seconds: "4:05".
+func minSec(secs int) string {
+	return fmt.Sprintf("%d:%02d", secs/60, secs%60)
 }
 
 // previewMaxRunes is how much of a message the chat list shows.
@@ -692,7 +697,7 @@ func (a analysis) previewText() string {
 	case KindVoice:
 		text = "🎤 Voice message"
 		if a.Media != nil && a.Media.Seconds > 0 {
-			text += fmt.Sprintf(" (%d:%02d)", a.Media.Seconds/60, a.Media.Seconds%60)
+			text += " (" + minSec(a.Media.Seconds) + ")"
 		}
 	case KindDocument:
 		name := "Document"
