@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
@@ -635,6 +636,37 @@ func oneLine(text string, max int) string {
 		return strings.TrimRight(b.String(), " ") + "…"
 	}
 	return b.String()
+}
+
+// Sanitize makes text written by someone else safe to print to a
+// terminal: control characters (including ESC, which starts terminal
+// commands) are dropped, bytes that aren't UTF-8 become U+FFFD, tabs
+// become spaces, and line breaks are kept. For display only: stored text
+// keeps its original bytes.
+func Sanitize(s string) string {
+	clean := true
+	for _, r := range s {
+		if r != '\n' && (unicode.IsControl(r) || r == '\u2028' || r == '\u2029' || r == utf8.RuneError) {
+			clean = false
+			break
+		}
+	}
+	if clean {
+		return s
+	}
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n':
+			return r
+		case r == '\t':
+			return ' '
+		case r == '\u2028' || r == '\u2029':
+			return '\n'
+		case unicode.IsControl(r):
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // extractPreview trims plain conversational text for display.

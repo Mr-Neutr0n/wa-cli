@@ -20,6 +20,7 @@ import (
 	"github.com/codebyoketch/wa-cli/internal/config"
 	"github.com/codebyoketch/wa-cli/internal/localdb"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
+	"github.com/codebyoketch/wa-cli/internal/whatsapp"
 )
 
 // NOTE: written without a working Go 1.25 toolchain in the authoring
@@ -536,5 +537,27 @@ func TestRecordSentMessage_NoopWithNilStoreOrEmptyID(t *testing.T) {
 	}
 	if len(msgs) != 0 {
 		t.Errorf("expected no message stored for empty ID, got %d", len(msgs))
+	}
+}
+func TestPrintChatsAndContacts_DropTerminalControls(t *testing.T) {
+	out, _ := captureStdout(t, func() error {
+		printChats([]chatstore.Chat{{
+			JID:                "123@g.us",
+			Name:               "Group\x1b]0;pwned\x07",
+			LastMessagePreview: "hi\x1b[2J\x1b[H",
+		}})
+		printContacts([]whatsapp.Contact{{JID: "1@s.whatsapp.net", Name: "Asha\x1b[31m"}})
+		printContactDetail(whatsapp.Contact{
+			JID: "1@s.whatsapp.net", Name: "Asha\x1b[8m", PushName: "A\x9b2J", BusinessName: "Shop\x1bc",
+		})
+		return nil
+	})
+	if strings.ContainsAny(out, "\x1b\x07\u009b") {
+		t.Errorf("printed control characters: %q", out)
+	}
+	for _, want := range []string{"Group]0;pwned", "hi[2J[H", "Asha[31m", "Asha[8m", "A\ufffd2J", "Shopc"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output %q is missing %q", out, want)
+		}
 	}
 }

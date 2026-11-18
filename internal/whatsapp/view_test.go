@@ -3,6 +3,8 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -345,6 +347,50 @@ func TestOneLine_CutsBetweenCharacters(t *testing.T) {
 	}
 	if got := oneLine(strings.Repeat("é", 80), 80); got != strings.Repeat("é", 80) {
 		t.Errorf("text of exactly the limit was cut: %q", got)
+	}
+}
+
+func TestSanitize_DropsTerminalControls(t *testing.T) {
+	cases := map[string]string{
+		"plain text, emoji 🙂 and नमस्ते": "plain text, emoji 🙂 and नमस्ते",
+		"line one\nline two":             "line one\nline two",
+		"red \x1b[31malert\x1b[0m":       "red [31malert[0m",
+		"\x1b]0;pwned\x07title":          "]0;pwnedtitle",
+		"clear\x1b[2J\x1b[H screen":      "clear[2J[H screen",
+		"8-bit CSI \u009b31m":            "8-bit CSI 31m",
+		"back\rspace\b\x7f":              "backspace",
+		"tab\there":                      "tab here",
+		"para\u2028sep\u2029end":         "para\nsep\nend",
+		"raw C1 byte \x9b31m":            "raw C1 byte \ufffd31m",
+	}
+	for in, want := range cases {
+		if got := Sanitize(in); got != want {
+			t.Errorf("Sanitize(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestPrintIncoming_DropsTerminalControls(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	evt := liveEvent(ashaPN, ashaPN, "M1", text("hi\x1b]0;pwned\x07\x1b[2J"), false)
+	evt.Info.PushName = "Asha\x1b[8m"
+	(&Client{log: testLogger()}).printIncoming(evt, nil)
+	os.Stdout = orig
+	w.Close()
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.ContainsAny(string(out), "\x1b\x07") {
+		t.Errorf("printed control characters: %q", out)
+	}
+	if !strings.Contains(string(out), "Asha[8m") || !strings.Contains(string(out), "hi]0;pwned[2J") {
+		t.Errorf("printed %q, want the sender and text without their control characters", out)
 	}
 }
 

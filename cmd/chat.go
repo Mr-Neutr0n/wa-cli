@@ -81,14 +81,14 @@ var chatInfoCmd = &cobra.Command{
 			return printJSON(cmd, chat)
 		}
 		fmt.Printf("JID:            %s\n", chat.JID)
-		fmt.Printf("Name:           %s\n", chat.Name)
+		fmt.Printf("Name:           %s\n", whatsapp.Sanitize(chat.Name))
 		fmt.Printf("Group:          %t\n", chat.IsGroup)
 		fmt.Printf("Unread:         %d\n", chat.UnreadCount)
 		if chat.LastMessageAt > 0 {
 			fmt.Printf("Last message:   %s\n", time.UnixMilli(chat.LastMessageAt).Format(time.RFC1123))
 		}
 		if chat.LastMessagePreview != "" {
-			fmt.Printf("Last preview:   %s\n", chat.LastMessagePreview)
+			fmt.Printf("Last preview:   %s\n", whatsapp.Sanitize(chat.LastMessagePreview))
 		}
 		return nil
 	},
@@ -113,7 +113,7 @@ var chatOpenCmd = &cobra.Command{
 		if err := cs.MarkRead(chat.JID); err != nil {
 			a.Log.Warn("failed to mark chat read", "error", err)
 		}
-		fmt.Printf("%s (%s)\n\n", chat.Name, chat.JID)
+		fmt.Printf("%s (%s)\n\n", whatsapp.Sanitize(chat.Name), chat.JID)
 
 		ms := msgstore.New(a.Config.DataDir)
 		msgs, err := ms.List(chat.JID)
@@ -156,7 +156,7 @@ var chatOpenCmd = &cobra.Command{
 				who = client.ResolveName(ctx, m.SenderJID)
 			}
 			ts := time.UnixMilli(m.Timestamp).Local().Format("15:04:05")
-			fmt.Printf("[%d] (%s) %s: %s\n", i+1, ts, who, text)
+			fmt.Printf("[%d] (%s) %s: %s\n", i+1, ts, whatsapp.Sanitize(who), whatsapp.Sanitize(text))
 		}
 		fmt.Println("\nUse the [n] number with 'wa chat reply' or 'wa chat forward' to reference a message.")
 		return nil
@@ -303,9 +303,9 @@ func printChats(chats []chatstore.Chat) {
 		if c.UnreadCount > 0 {
 			unread = fmt.Sprintf(" (%d unread)", c.UnreadCount)
 		}
-		fmt.Printf("%-30s %s%s\n", c.Name, c.JID, unread)
+		fmt.Printf("%-30s %s%s\n", whatsapp.Sanitize(c.Name), c.JID, unread)
 		if c.LastMessagePreview != "" {
-			fmt.Printf("  ↳ %s\n", c.LastMessagePreview)
+			fmt.Printf("  ↳ %s\n", whatsapp.Sanitize(c.LastMessagePreview))
 		}
 	}
 }

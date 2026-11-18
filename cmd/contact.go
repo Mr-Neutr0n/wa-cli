@@ -171,19 +171,19 @@ func printContacts(contacts []whatsapp.Contact) {
 		if name == "" {
 			name = "(no name)"
 		}
-		fmt.Printf("%-30s %s\n", name, c.JID)
+		fmt.Printf("%-30s %s\n", whatsapp.Sanitize(name), c.JID)
 	}
 }
 
 func printContactDetail(c whatsapp.Contact) {
 	fmt.Printf("JID:           %s\n", c.JID)
 	if c.Name != "" {
-		fmt.Printf("Name:          %s\n", c.Name)
+		fmt.Printf("Name:          %s\n", whatsapp.Sanitize(c.Name))
 	}
 	if c.PushName != "" {
-		fmt.Printf("Push name:     %s\n", c.PushName)
+		fmt.Printf("Push name:     %s\n", whatsapp.Sanitize(c.PushName))
 	}
 	if c.BusinessName != "" {
-		fmt.Printf("Business name: %s\n", c.BusinessName)
+		fmt.Printf("Business name: %s\n", whatsapp.Sanitize(c.BusinessName))
 	}
 }

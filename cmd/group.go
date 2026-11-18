@@ -49,7 +49,7 @@ var groupListCmd = &cobra.Command{
 			return nil
 		}
 		for _, g := range groups {
-			fmt.Printf("%-30s %s (%d members)\n", g.Name, g.JID, g.ParticipantCount)
+			fmt.Printf("%-30s %s (%d members)\n", whatsapp.Sanitize(g.Name), g.JID, g.ParticipantCount)
 		}
 		return nil
 	},
@@ -89,10 +89,10 @@ var groupInfoCmd = &cobra.Command{
 			}{group, participants})
 		}
 
-		fmt.Printf("Name:  %s\n", group.Name)
+		fmt.Printf("Name:  %s\n", whatsapp.Sanitize(group.Name))
 		fmt.Printf("JID:   %s\n", group.JID)
 		if group.Topic != "" {
-			fmt.Printf("Topic: %s\n", group.Topic)
+			fmt.Printf("Topic: %s\n", whatsapp.Sanitize(group.Topic))
 		}
 		fmt.Printf("Members (%d):\n", len(participants))
 		for _, p := range participants {

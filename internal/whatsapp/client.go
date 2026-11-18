@@ -635,7 +635,7 @@ func (c *Client) printIncoming(evt *events.Message, guard *safety.Guard) {
 	}
 
 	ts := evt.Info.Timestamp.Local().Format("15:04:05")
-	fmt.Printf("[%s] %s (%s): %s\n", ts, sender, evt.Info.Chat.String(), text)
+	fmt.Printf("[%s] %s (%s): %s\n", ts, Sanitize(sender), evt.Info.Chat.String(), Sanitize(text))
 
 	if guard != nil {
 		if err := guard.MarkKnown(evt.Info.Sender.String()); err != nil {

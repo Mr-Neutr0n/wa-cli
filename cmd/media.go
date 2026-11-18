@@ -230,7 +230,7 @@ var mediaListCmd = &cobra.Command{
 			ts := time.UnixMilli(m.Timestamp).Local().Format("15:04:05")
 			fmt.Printf("[%d] (%s) %s sent %s %s", idx, ts, who, articleFor(m.MediaType), m.MediaType)
 			if m.Text != "" {
-				fmt.Printf(": %s", m.Text)
+				fmt.Printf(": %s", whatsapp.Sanitize(m.Text))
 			}
 			fmt.Println()
 		}
