@@ -8,6 +8,23 @@ from v1.0.0 onward.
 
 ## [Unreleased]
 
+### Reactions from the command line
+
+Added
+
+- `wa chat react <chat> <message-ref> <emoji>` sets your reaction on a
+  message, `--remove` clears it. `<message-ref>` is the `[n]` from
+  `wa chat open` or a raw message ID; `--json` reports the chat, message,
+  emoji and whether it was removed.
+- `wa chat open` shows each message's reactions on an indented line
+  under it (emoji, count, who; "You" for yours). With `--json`, each
+  message with reactions gains a `reactionSummary`.
+
+Fixed
+
+- `wa chat open --json` printed the chat's name before the JSON, so the
+  output didn't parse.
+
 ### Clean-up
 
 Fixed

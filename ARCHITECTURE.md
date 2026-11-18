@@ -76,7 +76,7 @@ Dashed box marks the one external dependency everything in
 
 One file per command or command group (`chat.go`, `contact.go`,
 `group.go`, `media.go`, `config.go`, `extension.go`, `completion.go`,
-`login.go`, `logout.go`, `status.go`, `send.go`/`reply.go`/`forward.go`,
+`login.go`, `logout.go`, `status.go`, `send.go`/`reply.go`/`forward.go`/`react.go`,
 `watch.go`, `version.go`, `root.go`), each self-registering onto
 `rootCmd` from its own `init()`. `root.go` builds the shared `app.App`
 (`var a *app.App`) once at package init time, before any command's
@@ -102,7 +102,7 @@ library code:
   and builds a `whatsapp.Client`.
 - **`cmd/send_shared.go`** — the resolve-recipient / rate-limit /
   confirm-new-recipient logic shared by `chat send`, `chat reply`,
-  `chat forward`, and `media send`.
+  `chat forward`, `chat react`, and `media send`.
 - **`cmd/completion.go`** — besides `wa completion`, `completeFirstArg`
   and `withPrefix`, which every command's shell completion goes through.
 

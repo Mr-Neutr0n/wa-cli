@@ -165,10 +165,12 @@ connected or sent — to try it out.
 wa chat list [--no-sync]        # list chats, most recent first
 wa chat search <query>          # search chats by name
 wa chat info <jid-or-name>      # details for one chat
-wa chat open <jid-or-name>      # show local message history
+wa chat open <jid-or-name>      # show local message history, with reactions
 wa chat send <recipient> <message...>
 wa chat reply <recipient> <message-ref> <message...>
 wa chat forward <from-chat> <message-ref> <to-recipient>
+wa chat react <chat> <message-ref> <emoji>   # set your reaction
+wa chat react <chat> <message-ref> --remove  # clear it
 wa chat mute / unmute <chat>    # suppress desktop notifications per chat
 ```
 
@@ -234,6 +236,11 @@ list`) supports `--json` for scripting:
 ```sh
 wa chat list --json | jq '.[] | .name'
 ```
+
+`wa chat react --json` reports `chatJid`, `messageId`, `emoji` and
+`removed`; in `wa chat open --json` each message with reactions also
+carries a `reactionSummary` (per emoji: `emoji`, `count`, `mine`,
+`names`).
 
 Set it as the default instead of passing the flag every time:
 
