@@ -267,6 +267,25 @@ func TestView_Reactions(t *testing.T) {
 	}
 }
 
+func TestMessageView_WithoutStores(t *testing.T) {
+	// 'wa chat open' reads the messages itself and builds views on a
+	// client with no stores attached.
+	c := &Client{log: testLogger(), contactOverride: &fakeContacts{}, selfJID: meJID, selfLID: meLID}
+	m := stored("M1", text("party?"))
+	m.Reactions = []msgstore.Reaction{
+		{SenderJID: "me", Emoji: "👍", Timestamp: 10},
+		{SenderJID: bilalPN.String(), Emoji: "👍", Timestamp: 20},
+		{SenderJID: ashaPN.String(), Emoji: "", Timestamp: 30}, // removed
+	}
+	v, ok := c.MessageView(context.Background(), m)
+	if !ok {
+		t.Fatal("MessageView hid a text message")
+	}
+	if len(v.Reactions) != 1 || v.Reactions[0].Count != 2 || !v.Reactions[0].Mine {
+		t.Errorf("reactions = %+v, want 👍 x2 including mine", v.Reactions)
+	}
+}
+
 func TestView_SinglePollAndUnknownHashes(t *testing.T) {
 	tc := newStoreClient(t)
 	poll := stored("P1", &waProto.Message{PollCreationMessageV5: &waProto.PollCreationMessage{

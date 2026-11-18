@@ -239,6 +239,13 @@ func (c *Client) Search(ctx context.Context, chatJID, query string, limit int) (
 	return views, nil
 }
 
+// MessageView builds the view of a message already read from the store,
+// for callers that list messages themselves ('wa chat open'). ok is false
+// for a row that isn't a message of its own.
+func (c *Client) MessageView(ctx context.Context, m msgstore.Message) (MessageView, bool) {
+	return c.view(ctx, m)
+}
+
 // view builds what the TUI draws for a stored message. ok is false for a
 // row that isn't a message of its own (plumbing, or an event that could
 // not be folded into its target).
