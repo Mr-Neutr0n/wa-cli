@@ -4,9 +4,6 @@ import (
 	"strings"
 )
 
-// maxSuggestions is how many matches a dropdown shows.
-const maxSuggestions = 6
-
 // member is someone who can be @mentioned in the open group.
 type member struct {
 	jid   string   // e.g. "177403959709918@lid"

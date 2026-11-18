@@ -1,5 +1,7 @@
 package tui
 
+import "strings"
+
 // emoji is one entry of the ":name" completion table.
 type emoji struct{ name, char string }
 
@@ -70,4 +72,45 @@ var emojiTable = []emoji{
 	{"bug", "🐛"}, {"wrench", "🔧"}, {"hammer", "🔨"}, {"gear", "⚙️"}, {"package", "📦"},
 	{"ship", "🚢"}, {"recycle", "♻️"}, {"up", "⬆️"}, {"down", "⬇️"}, {"left", "⬅️"},
 	{"right", "➡️"}, {"red_circle", "🔴"}, {"green_circle", "🟢"}, {"blue_circle", "🔵"}, {"yellow_circle", "🟡"},
+}
+
+// emojiQuery returns the name typed after a ":" that starts a word, up to
+// the cursor: ":smi" -> "smi". At least two letters, so "10:30" and ":)"
+// don't open the dropdown.
+func emojiQuery(value string, pos int) (query string, start int, ok bool) {
+	runes := []rune(value)
+	before := runes[:max(0, min(pos, len(runes)))]
+	i := len(before) - 1
+	for i >= 0 && isEmojiNameRune(before[i]) {
+		i--
+	}
+	if i < 0 || before[i] != ':' || len(before)-i-1 < 2 {
+		return "", 0, false
+	}
+	if i > 0 && before[i-1] != ' ' && before[i-1] != '\n' {
+		return "", 0, false
+	}
+	return strings.ToLower(string(before[i+1:])), i, true
+}
+
+func isEmojiNameRune(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '+' || r == '-'
+}
+
+// matchEmoji returns emoji whose name starts with q, then ones that
+// merely contain it.
+func matchEmoji(q string) []emoji {
+	var out, rest []emoji
+	for _, e := range emojiTable {
+		switch {
+		case strings.HasPrefix(e.name, q):
+			out = append(out, e)
+		case strings.Contains(e.name, q):
+			rest = append(rest, e)
+		}
+		if len(out) == maxSuggestions {
+			return out
+		}
+	}
+	return append(out, rest...)[:min(maxSuggestions, len(out)+len(rest))]
 }
