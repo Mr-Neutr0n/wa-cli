@@ -218,20 +218,23 @@ func displayText(msg *waProto.Message, m msgstore.Message, resolve func(string) 
 	if a.Class != classRow {
 		return "", true
 	}
-	body := resolveMentions(a.Text, a.Ctx.GetMentionedJID(), resolve)
-	var text string
-	switch a.Kind {
-	case KindText, KindSystem, KindUnsupported, KindLocation, KindContact:
-		text = body
-	case KindPoll:
-		text = withMediaTag("poll", body)
-	default:
-		text = withMediaTag(a.MediaType, body)
-	}
+	text := a.taggedText(resolveMentions(a.Text, a.Ctx.GetMentionedJID(), resolve))
 	if m.Edited && text != "" {
 		text += " (edited)"
 	}
 	return text, false
+}
+
+// taggedText is body as one-line output ('wa chat open', 'wa watch')
+// shows it: media and polls get a "[type]" tag in front.
+func (a analysis) taggedText(body string) string {
+	switch a.Kind {
+	case KindText, KindSystem, KindUnsupported, KindLocation, KindContact:
+		return body
+	case KindPoll:
+		return withMediaTag("poll", body)
+	}
+	return withMediaTag(a.MediaType, body)
 }
 
 func withMediaTag(mediaType, text string) string {

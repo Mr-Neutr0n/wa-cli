@@ -614,17 +614,8 @@ func (c *Client) printIncoming(evt *events.Message, guard *safety.Guard) {
 		sender = evt.Info.Sender.User
 	}
 
-	text := a.Text
-	switch a.Kind {
-	case KindText, KindSystem, KindUnsupported, KindLocation, KindContact:
-	case KindPoll:
-		text = withMediaTag("poll", text)
-	default:
-		text = withMediaTag(a.MediaType, text)
-	}
-
 	ts := evt.Info.Timestamp.Local().Format("15:04:05")
-	fmt.Printf("[%s] %s (%s): %s\n", ts, Sanitize(sender), evt.Info.Chat.String(), Sanitize(text))
+	fmt.Printf("[%s] %s (%s): %s\n", ts, Sanitize(sender), evt.Info.Chat.String(), Sanitize(a.taggedText(a.Text)))
 
 	if guard != nil {
 		if err := guard.MarkKnown(evt.Info.Sender.String()); err != nil {
