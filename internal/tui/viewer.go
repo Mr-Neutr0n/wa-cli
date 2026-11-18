@@ -118,71 +118,152 @@ func (v *viewer) drawn(msg viewerDrawnMsg) {
 	}
 }
 
-// drawPhotoCmd decodes the photo, fits it to cols x rows cells and puts
-// it on screen: as text returned to View (half blocks) or written directly
-// to the terminal (graphics protocols).
+// drawPhotoCmd fits the photo to cols x rows cells and puts it on screen
+// with the drawer for proto.
 func drawPhotoCmd(out io.Writer, path string, proto termimg.Protocol, cols, rows, seq int) tea.Cmd {
 	return func() tea.Msg {
-		started := time.Now()
+		job := photoJob{out: out, path: path, cols: cols, rows: rows, started: time.Now()}
 		// Decoded pixels are garbage as soon as this returns; hand the
 		// memory back to the OS rather than sitting on it.
 		defer debug.FreeOSMemory()
-
-		if proto == termimg.ITerm {
-			// iTerm2 takes the file itself: no decoding, full quality.
-			info, err := termimg.Probe(path)
-			if err != nil {
-				return viewerDrawnMsg{seq: seq, err: err}
-			}
-			f, err := os.Open(path)
-			if err != nil {
-				return viewerDrawnMsg{seq: seq, err: err}
-			}
-			defer f.Close()
-			waitForBlankFrame(started)
-			w := bufio.NewWriterSize(out, 64<<10)
-			fmt.Fprint(w, "\x1b7\x1b[H")
-			err = termimg.WriteITerm(w, f, info.Size, filepath.Base(path), cols, rows)
-			fmt.Fprint(w, "\x1b8")
-			if ferr := w.Flush(); err == nil {
-				err = ferr
-			}
-			return viewerDrawnMsg{seq: seq, info: info, err: err}
-		}
-
-		img, info, err := termimg.Load(path, termimg.DefaultBudget)
-		if err != nil {
-			return viewerDrawnMsg{seq: seq, info: info, err: err}
-		}
-		img = termimg.Orient(img, info.Orientation)
-		b := img.Bounds()
-
-		if proto == termimg.Blocks {
-			return viewerDrawnMsg{seq: seq, info: info, text: termimg.HalfBlocks(img, cols, rows)}
-		}
-
-		// Scale to the screen's pixel size (never up), then draw centred.
-		cw, ch := termimg.CellPixels(proto)
-		pw, ph := termimg.Fit(b.Dx(), b.Dy(), cols*cw, rows*ch)
-		var scaled image.Image = termimg.Scale(img, pw, ph)
-		img = nil // let the full-size pixels go before encoding
-
-		col := max(1, (cols-(pw+cw-1)/cw)/2+1)
-		row := max(1, (rows-(ph+ch-1)/ch)/2+1)
-		waitForBlankFrame(started)
-		w := bufio.NewWriterSize(out, 64<<10)
-		fmt.Fprintf(w, "\x1b7\x1b[%d;%dH", row, col)
-		if proto == termimg.Kitty {
-			err = termimg.WriteKitty(w, scaled)
-		} else {
-			err = termimg.WriteSixel(w, scaled, 256)
-		}
-		fmt.Fprint(w, "\x1b8")
-		if ferr := w.Flush(); err == nil {
-			err = ferr
-		}
-		return viewerDrawnMsg{seq: seq, info: info, err: err}
+		msg := drawerFor(proto).draw(job)
+		msg.seq = seq
+		return msg
 	}
+}
+
+// photoJob is one photo to draw into a cols x rows area of cells.
+type photoJob struct {
+	out        io.Writer
+	path       string
+	cols, rows int
+	started    time.Time // when the viewer asked for its blank frame
+}
+
+// A photoDrawer is one way of putting a photo on the terminal. There is
+// one per termimg.Protocol, and the viewer's "m" key moves to the next.
+type photoDrawer interface {
+	// draw shows the photo: as text in the result, which View draws (half
+	// blocks), or written straight to the terminal (graphics protocols).
+	draw(j photoJob) viewerDrawnMsg
+	// clear removes whatever draw left that clearing the screen doesn't.
+	clear(out io.Writer)
+}
+
+// photoDrawers is indexed by termimg.Protocol.
+var photoDrawers = [...]photoDrawer{
+	termimg.Blocks: blockDrawer{},
+	termimg.Sixel: pixelDrawer{proto: termimg.Sixel, encode: func(w io.Writer, img image.Image) error {
+		return termimg.WriteSixel(w, img, 256)
+	}},
+	termimg.ITerm: fileDrawer{},
+	// Kitty keeps images until told to delete them.
+	termimg.Kitty: pixelDrawer{proto: termimg.Kitty, encode: termimg.WriteKitty, clearSeq: "\x1b_Ga=d\x1b\\"},
+}
+
+// drawerFor returns the drawer for p, falling back to half blocks.
+func drawerFor(p termimg.Protocol) photoDrawer {
+	if p < 0 || int(p) >= len(photoDrawers) {
+		return photoDrawers[termimg.Blocks]
+	}
+	return photoDrawers[p]
+}
+
+// nextProtocol is the drawing mode after p, wrapping around.
+func nextProtocol(p termimg.Protocol) termimg.Protocol {
+	return (p + 1) % termimg.Protocol(len(photoDrawers))
+}
+
+// blockDrawer draws with half-block characters: plain text, so it works
+// in every terminal and is part of the frame.
+type blockDrawer struct{}
+
+func (blockDrawer) draw(j photoJob) viewerDrawnMsg {
+	img, info, err := loadUpright(j.path)
+	if err != nil {
+		return viewerDrawnMsg{info: info, err: err}
+	}
+	return viewerDrawnMsg{info: info, text: termimg.HalfBlocks(img, j.cols, j.rows)}
+}
+
+func (blockDrawer) clear(io.Writer) {}
+
+// fileDrawer hands the file itself to the terminal (iTerm2's protocol):
+// no decoding here, full quality.
+type fileDrawer struct{}
+
+func (fileDrawer) draw(j photoJob) viewerDrawnMsg {
+	info, err := termimg.Probe(j.path)
+	if err != nil {
+		return viewerDrawnMsg{err: err}
+	}
+	f, err := os.Open(j.path)
+	if err != nil {
+		return viewerDrawnMsg{err: err}
+	}
+	defer f.Close()
+	err = writeOver(j, 1, 1, func(w io.Writer) error {
+		return termimg.WriteITerm(w, f, info.Size, filepath.Base(j.path), j.cols, j.rows)
+	})
+	return viewerDrawnMsg{info: info, err: err}
+}
+
+func (fileDrawer) clear(io.Writer) {}
+
+// pixelDrawer scales the photo to the screen and sends its pixels with
+// encode (Sixel, Kitty).
+type pixelDrawer struct {
+	proto    termimg.Protocol
+	encode   func(io.Writer, image.Image) error
+	clearSeq string // deletes the picture, if a screen clear doesn't
+}
+
+func (d pixelDrawer) draw(j photoJob) viewerDrawnMsg {
+	img, info, err := loadUpright(j.path)
+	if err != nil {
+		return viewerDrawnMsg{info: info, err: err}
+	}
+	b := img.Bounds()
+	// Scale to the screen's pixel size (never up), then draw centred.
+	cw, ch := termimg.CellPixels(d.proto)
+	pw, ph := termimg.Fit(b.Dx(), b.Dy(), j.cols*cw, j.rows*ch)
+	var scaled image.Image = termimg.Scale(img, pw, ph)
+	img = nil // let the full-size pixels go before encoding
+
+	col := max(1, (j.cols-(pw+cw-1)/cw)/2+1)
+	row := max(1, (j.rows-(ph+ch-1)/ch)/2+1)
+	err = writeOver(j, row, col, func(w io.Writer) error { return d.encode(w, scaled) })
+	return viewerDrawnMsg{info: info, err: err}
+}
+
+func (d pixelDrawer) clear(out io.Writer) {
+	if d.clearSeq != "" {
+		fmt.Fprint(out, d.clearSeq)
+	}
+}
+
+// loadUpright decodes the photo within the memory budget and turns it
+// the right way up.
+func loadUpright(path string) (image.Image, termimg.Info, error) {
+	img, info, err := termimg.Load(path, termimg.DefaultBudget)
+	if err != nil {
+		return nil, info, err
+	}
+	return termimg.Orient(img, info.Orientation), info, nil
+}
+
+// writeOver writes a picture over the viewer's blank frame with its top
+// left corner at row, col (1-based), and puts the cursor back.
+func writeOver(j photoJob, row, col int, write func(io.Writer) error) error {
+	waitForBlankFrame(j.started)
+	w := bufio.NewWriterSize(j.out, 64<<10)
+	fmt.Fprintf(w, "\x1b7\x1b[%d;%dH", row, col)
+	err := write(w)
+	fmt.Fprint(w, "\x1b8")
+	if ferr := w.Flush(); err == nil {
+		err = ferr
+	}
+	return err
 }
 
 // waitForBlankFrame gives Bubble Tea time to paint the viewer's empty
@@ -248,7 +329,7 @@ func (v *viewer) key(m *model, msg tea.KeyMsg) tea.Cmd {
 		// Next drawing mode. A mode the terminal doesn't understand shows
 		// nothing (terminals ignore graphics they can't draw): press m again.
 		v.clear(m)
-		v.proto = (v.proto + 1) % 4
+		v.proto = nextProtocol(v.proto)
 		return v.redraw(m)
 	case "o":
 		if openable(v.path) {
@@ -278,9 +359,7 @@ func (v *viewer) key(m *model, msg tea.KeyMsg) tea.Cmd {
 // clear removes pictures that outlive a screen clear (Kitty keeps images
 // until told to delete them).
 func (v *viewer) clear(m *model) {
-	if v.proto == termimg.Kitty {
-		fmt.Fprint(m.out, "\x1b_Ga=d\x1b\\")
-	}
+	drawerFor(v.proto).clear(m.out)
 }
 
 // copyFile copies src into dir, returning the new path.
