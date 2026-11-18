@@ -200,7 +200,9 @@ func TestDir_MkdirAllFailurePropagates(t *testing.T) {
 	if err := os.WriteFile(blocked, []byte("not a directory"), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
+	// Linux reads XDG_CONFIG_HOME, macOS reads HOME; block both.
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(blocked, "sub"))
+	t.Setenv("HOME", filepath.Join(blocked, "sub"))
 
 	if _, err := Dir(); err == nil {
 		t.Fatal("Dir() should error when a path component exists as a file, not a directory")
