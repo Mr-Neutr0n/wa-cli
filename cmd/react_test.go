@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -13,6 +15,7 @@ import (
 	"github.com/codebyoketch/wa-cli/internal/config"
 	"github.com/codebyoketch/wa-cli/internal/localdb"
 	"github.com/codebyoketch/wa-cli/internal/msgstore"
+	"github.com/codebyoketch/wa-cli/internal/safety"
 )
 
 func TestReactArgs(t *testing.T) {
@@ -161,4 +164,79 @@ func sortedKeys(m map[string]any) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// A reaction must not mark its chat as messaged: that would skip the
+// first-message confirmation the next time you actually send there.
+func TestRecordRateLimit_DoesNotMarkRecipientKnown(t *testing.T) {
+	dir := withAppDataDir(t)
+	jid := "254700282181@s.whatsapp.net"
+
+	recordRateLimit()
+
+	known, err := safety.New(dir).IsKnown(jid)
+	if err != nil {
+		t.Fatalf("IsKnown: %v", err)
+	}
+	if known {
+		t.Error("a reaction marked the recipient known, so a later first message would skip its confirmation")
+	}
+}
+
+// Reacting goes through checkRateLimit, which has no recipient to confirm.
+// The message path keeps its guard.
+func TestCheckRateLimit_SkipsNewRecipientPrompt(t *testing.T) {
+	dir := withAppDataDir(t)
+	a.Config.ConfirmNewRecipients = true
+	quietStdin(t)
+	quietStdout(t)
+
+	if err := checkRateLimit(); err != nil {
+		t.Fatalf("checkRateLimit: %v", err)
+	}
+	err := checkSendGuards("254700282181@s.whatsapp.net")
+	if err == nil || !strings.Contains(err.Error(), "cancelled") {
+		t.Errorf("checkSendGuards = %v, want cancelled: the first-message guard must still run for messages", err)
+	}
+	if known, _ := safety.New(dir).IsKnown("254700282181@s.whatsapp.net"); known {
+		t.Error("a cancelled send marked the recipient known")
+	}
+}
+
+// quietStdin replaces os.Stdin with an immediately-closed pipe, so a
+// prompt reads EOF and cancels instead of blocking the test.
+func quietStdin(t *testing.T) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("closing pipe: %v", err)
+	}
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		r.Close()
+	})
+}
+
+// quietStdout swallows the confirmation prompt checkSendGuards prints.
+func quietStdout(t *testing.T) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	go func() {
+		_, _ = io.Copy(io.Discard, r)
+		r.Close()
+	}()
+	t.Cleanup(func() {
+		os.Stdout = orig
+		w.Close()
+	})
 }

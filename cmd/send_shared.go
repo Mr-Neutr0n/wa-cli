@@ -93,12 +93,8 @@ func resolveMessageRef(ms *msgstore.Store, chatJID, ref string) (msgstore.Messag
 // confirmation before a first-time send to jidStr. Call this BEFORE
 // connecting/sending.
 func checkSendGuards(jidStr string) error {
-	ok, retryAfter, window, err := sendLimiter().Allow()
-	if err != nil {
+	if err := checkRateLimit(); err != nil {
 		return err
-	}
-	if !ok {
-		return fmt.Errorf("rate limit hit (%s window) — try again in %s", window, retryAfter.Round(time.Second))
 	}
 
 	if a.Config.ConfirmNewRecipients {
@@ -110,6 +106,20 @@ func checkSendGuards(jidStr string) error {
 		if !known && !confirm(fmt.Sprintf("You haven't messaged %s before. Send anyway?", jidStr)) {
 			return fmt.Errorf("cancelled")
 		}
+	}
+	return nil
+}
+
+// checkRateLimit enforces only the outbound rate limit. Reactions use it
+// instead of checkSendGuards: they reach a chat you may never have
+// messaged, and there is no first message to confirm.
+func checkRateLimit() error {
+	ok, retryAfter, window, err := sendLimiter().Allow()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("rate limit hit (%s window) — try again in %s", window, retryAfter.Round(time.Second))
 	}
 	return nil
 }
@@ -142,13 +152,21 @@ func clockTime(ms int64) string {
 // marks jidStr as a known recipient. Call this AFTER a send succeeds —
 // never before, and never on failure.
 func recordSendGuards(jidStr string) {
-	if err := sendLimiter().Record(); err != nil {
-		a.Log.Warn("failed to record send for rate limiting", "error", err)
-	}
+	recordRateLimit()
 
 	guard := safety.New(a.Config.DataDir)
 	if err := guard.MarkKnown(jidStr); err != nil {
 		a.Log.Warn("failed to mark recipient known", "error", err)
+	}
+}
+
+// recordRateLimit counts one send against the rate limiter without
+// marking the recipient known. A reaction is a send, so it counts, but it
+// says nothing about whether we have messaged that person, and marking it
+// would skip the first-message confirmation later.
+func recordRateLimit() {
+	if err := sendLimiter().Record(); err != nil {
+		a.Log.Warn("failed to record send for rate limiting", "error", err)
 	}
 }
 

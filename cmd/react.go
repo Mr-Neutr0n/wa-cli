@@ -33,7 +33,7 @@ of taking an emoji.`,
 			emoji = args[2]
 		}
 
-		if err := checkSendGuards(jid.String()); err != nil {
+		if err := checkRateLimit(); err != nil {
 			return err
 		}
 
@@ -46,7 +46,7 @@ of taking an emoji.`,
 		if err := client.React(ctx, target, emoji); err != nil {
 			return err
 		}
-		recordSendGuards(jid.String())
+		recordRateLimit()
 
 		return printReaction(cmd, reactionResult{
 			ChatJID:   jid.String(),
